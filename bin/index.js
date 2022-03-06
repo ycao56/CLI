@@ -4,11 +4,25 @@ const { program } = require("commander");
 const fsPromise = require("fs").promises;
 const fs = require("fs");
 const { fdir } = require("fdir");
+const si = require("systeminformation");
 
 // GLOBAL
 const mime = require("mime-types");
 const chalk = require("chalk");
 const log = console.log;
+
+const SUPPORTED_MIME = [
+  // IMAGES
+  "image/heif",
+  "image/heic",
+  "image/jpeg",
+  "image/gif",
+  "image/png",
+
+  // VIDEO
+  "video/mp4",
+  "video/quicktime",
+];
 
 program
   .name("Immich CLI Utilities")
@@ -29,6 +43,10 @@ program.parse(process.argv);
 
 async function upload({ email, password, server, port, directory }) {
   const endpoint = `http://${server}:${port}`;
+  const deviceId = (await si.uuid()).os;
+  const osInfo = (await si.osInfo()).distro;
+  const localAssets = [];
+  const newAssets = [];
 
   // Ping server
   log("[1] Pinging server...");
@@ -53,15 +71,61 @@ async function upload({ email, password, server, port, directory }) {
   }
 
   // Index provided directory
-  log("[3] Indexing files...");
-  const api = new fdir().filter().withFullPaths().crawl(directory);
+  log("[4] Indexing files...");
+  const api = new fdir().withFullPaths().crawl(directory);
 
   const files = await api.withPromise();
 
-  files.forEach((file) => {
-    const mimeType = mime.lookup(file);
-    console.log(mimeType);
+  for (const filePath of files) {
+    const mimeType = mime.lookup(filePath);
+    if (SUPPORTED_MIME.includes(mimeType)) {
+      const fileStat = fs.statSync(filePath);
+
+      localAssets.push({
+        id: Math.round(
+          fileStat.ctimeMs + fileStat.mtimeMs + fileStat.birthtimeMs
+        ).toString(),
+        filePath,
+      });
+    }
+  }
+  log(chalk.green("Indexing file: OK"));
+  log(
+    chalk.yellow(`Found ${localAssets.length} assets in specified directory`)
+  );
+
+  // Compare with server
+  log("[5] Gathering device's asset info from server...");
+
+  const backupAsset = await getAssetInfoFromServer(
+    endpoint,
+    accessToken,
+    deviceId
+  );
+
+  localAssets.forEach((localAsset) => {
+    if (!backupAsset.includes(localAsset.id)) {
+      newAssets.push(localAsset);
+    }
   });
+
+  log(
+    chalk.green(
+      `A total of ${newAssets.length} assets will be uploaded to the server`
+    )
+  );
+}
+
+async function getAssetInfoFromServer(endpoint, accessToken, deviceId) {
+  try {
+    const res = await axios.get(`${endpoint}/asset/${deviceId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    return res.data;
+  } catch (e) {
+    log(chalk.red("Error getting device's uploaded assets"));
+    process.exit(1);
+  }
 }
 
 async function pingServer(endpoint) {
@@ -95,4 +159,5 @@ async function login(endpoint, email, password) {
   }
 }
 // node bin/index.js upload --email testuser@email.com --password password --server 192.168.1.216 --port 2283 -d /home/alex/Downloads/db6e94e1-ab1d-4ff0-a3b7-ba7d9e7b9d84
+// node bin/index.js upload --email testuser@email.com --password password --server 192.168.1.216 --port 2283 -d /Users/alex/Documents/immich-cli-upload-test-location
 // node bin/index.js upload --help
