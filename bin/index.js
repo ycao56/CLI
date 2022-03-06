@@ -3,9 +3,11 @@ const { default: axios } = require("axios");
 const { program } = require("commander");
 const fsPromise = require("fs").promises;
 const fs = require("fs");
+const { fdir } = require("fdir");
 
+// GLOBAL
+const mime = require("mime-types");
 const chalk = require("chalk");
-
 const log = console.log;
 
 program
@@ -49,6 +51,17 @@ async function upload({ email, password, server, port, directory }) {
     log(chalk.red("Error navigating to directory - check directory path"));
     process.exit(1);
   }
+
+  // Index provided directory
+  log("[3] Indexing files...");
+  const api = new fdir().filter().withFullPaths().crawl(directory);
+
+  const files = await api.withPromise();
+
+  files.forEach((file) => {
+    const mimeType = mime.lookup(file);
+    console.log(mimeType);
+  });
 }
 
 async function pingServer(endpoint) {
