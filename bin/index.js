@@ -164,16 +164,20 @@ async function upload({ email, password, server, port, directory }) {
 
 async function startUpload(endpoint, accessToken, asset, deviceId) {
   try {
+    const assetType = getAssetType(asset.filePath);
     const fileStat = await stat(asset.filePath);
     var data = new FormData();
     data.append("deviceAssetId", asset.id);
     data.append("deviceId", deviceId);
-    data.append("assetType", getAssetType(asset.filePath));
+    data.append("assetType", assetType);
     data.append("createdAt", fileStat.mtime.toISOString());
     data.append("modifiedAt", fileStat.mtime.toISOString());
     data.append("isFavorite", JSON.stringify(false));
     data.append("fileExtension", path.extname(asset.filePath));
-    data.append("duration", JSON.stringify(null));
+    data.append(
+      "duration",
+      assetType == "IMAGE" ? JSON.stringify(null) : "0:00:00.000000"
+    );
     data.append("files", fs.createReadStream(asset.filePath));
 
     const config = {
@@ -244,6 +248,7 @@ function getAssetType(filePath) {
 
   return mimeType.split("/")[0].toUpperCase();
 }
+
 // node bin/index.js upload --email testuser@email.com --password password --server 192.168.1.216 --port 2283 -d /home/alex/Downloads/db6e94e1-ab1d-4ff0-a3b7-ba7d9e7b9d84
 // node bin/index.js upload --email testuser@email.com --password password --server 192.168.1.216 --port 2283 -d /Users/alex/Documents/immich-cli-upload-test-location
 // node bin/index.js upload --help
