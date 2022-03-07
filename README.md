@@ -4,12 +4,59 @@ CLI Utilities to help with some operations with the Immich app
 
 # Features
 
-1. Upload assets (videos/images) from a directory to IMMICH server
+- Upload assets (videos/images) from a directory to IMMICH server
+
+## Supported file type
+
+### Image
+
+- heif
+- heic
+- jpeg
+- gif
+- png
+
+### Video
+
+- mp4
+- quicktime
+
+# Getting Started
+
+### Install from NPM
+
+1 - Install from NPM repository
 
 ```
-node bin/index.js upload --email testuser@email.com --password password --server 192.168.1.216 --port 2283 -d /home/alex/Downloads/db6e94e1-ab1d-4ff0-a3b7-ba7d9e7b9d84
+npm i -g immich
 ```
 
-# Installation
+2 - Run
 
-## Install from NPM
+Specify user's credential, Immich's server address and port and the directory you would like to upload videos/photos from.
+
+```
+immich upload --email testuser@email.com --password password --server 192.168.1.216 --port 2283 -d your/target/directory
+```
+
+---
+
+### Install from source
+
+1 - Clone Repository
+
+```
+git clone https://github.com/alextran1502/immich_cli
+```
+
+2 - Install dependencies
+
+```
+npm install
+```
+
+3 - Run
+
+```
+node bin/index.js upload --email testuser@email.com --password password --server 192.168.1.216 --port 2283 -d your/target/directory
+```
