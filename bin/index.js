@@ -9,6 +9,7 @@ const readline = require("readline");
 var path = require("path");
 var FormData = require("form-data");
 const cliProgress = require("cli-progress");
+const { getVideoDurationInSeconds } = require("get-video-duration");
 
 // GLOBAL
 const mime = require("mime-types");
@@ -38,7 +39,7 @@ const SUPPORTED_MIME = [
 program
   .name("Immich CLI Utilities")
   .description("Immich CLI Utilities toolset")
-  .version("0.1.0");
+  .version("0.2.0");
 
 program
   .command("upload")
@@ -166,6 +167,13 @@ async function startUpload(endpoint, accessToken, asset, deviceId) {
   try {
     const assetType = getAssetType(asset.filePath);
     const fileStat = await stat(asset.filePath);
+    let videoDuration = 0;
+    if (assetType == "VIDEO") {
+      videoDuration = await getVideoDurationInSeconds(
+        fs.createReadStream(asset.filePath)
+      );
+    }
+
     var data = new FormData();
     data.append("deviceAssetId", asset.id);
     data.append("deviceId", deviceId);
@@ -176,7 +184,9 @@ async function startUpload(endpoint, accessToken, asset, deviceId) {
     data.append("fileExtension", path.extname(asset.filePath));
     data.append(
       "duration",
-      assetType == "IMAGE" ? JSON.stringify(null) : "0:00:00.000000"
+      assetType == "IMAGE"
+        ? JSON.stringify(null)
+        : formatVideoDuration(videoDuration)
     );
     data.append("files", fs.createReadStream(asset.filePath));
 
@@ -249,6 +259,23 @@ function getAssetType(filePath) {
   return mimeType.split("/")[0].toUpperCase();
 }
 
+function formatVideoDuration(second) {
+  var sec_num = parseInt(second, 10); // don't forget the second param
+  var hours = Math.floor(sec_num / 3600);
+  var minutes = Math.floor((sec_num - hours * 3600) / 60);
+  var seconds = sec_num - hours * 3600 - minutes * 60;
+
+  if (hours < 10) {
+    hours = hours;
+  }
+  if (minutes < 10) {
+    minutes = "0" + minutes;
+  }
+  if (seconds < 10) {
+    seconds = "0" + seconds;
+  }
+  return hours + ":" + minutes + ":" + seconds;
+}
 // node bin/index.js upload --email testuser@email.com --password password --server 192.168.1.216 --port 2283 -d /home/alex/Downloads/db6e94e1-ab1d-4ff0-a3b7-ba7d9e7b9d84
 // node bin/index.js upload --email testuser@email.com --password password --server 192.168.1.216 --port 2283 -d /Users/alex/Documents/immich-cli-upload-test-location
 // node bin/index.js upload --help

@@ -1,6 +1,6 @@
 # IMMICH CLI
 
-CLI Utilities to help with some operations with the Immich app
+CLI utilities to help with some operations with the Immich app
 
 # Features
 
