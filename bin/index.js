@@ -5,11 +5,22 @@ const fsPromise = require("fs").promises;
 const fs = require("fs");
 const { fdir } = require("fdir");
 const si = require("systeminformation");
+const readline = require("readline");
+var path = require("path");
+var FormData = require("form-data");
+const cliProgress = require("cli-progress");
 
 // GLOBAL
 const mime = require("mime-types");
 const chalk = require("chalk");
 const log = console.log;
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+const util = require("util");
+const { stat } = require("fs/promises");
+const question = util.promisify(rl.question).bind(rl);
 
 const SUPPORTED_MIME = [
   // IMAGES
@@ -94,7 +105,7 @@ async function upload({ email, password, server, port, directory }) {
     chalk.yellow(`Found ${localAssets.length} assets in specified directory`)
   );
 
-  // Compare with server
+  // Find assets that has not been backup
   log("[5] Gathering device's asset info from server...");
 
   const backupAsset = await getAssetInfoFromServer(
@@ -109,11 +120,80 @@ async function upload({ email, password, server, port, directory }) {
     }
   });
 
-  log(
-    chalk.green(
-      `A total of ${newAssets.length} assets will be uploaded to the server`
-    )
-  );
+  if (newAssets.length == 0) {
+    log(chalk.green("All assets have been backup to the server"));
+    process.exit(0);
+  } else {
+    log(
+      chalk.green(
+        `A total of ${newAssets.length} assets will be uploaded to the server`
+      )
+    );
+  }
+
+  // Ask user
+  const answer = await question("Do you want to start upload now? (y/n) ");
+
+  if (answer == "n") {
+    log(chalk.yellow("Abort Upload Process"));
+    process.exit(1);
+  }
+
+  if (answer == "y") {
+    log(chalk.green("Start uploading..."));
+    const progressBar = new cliProgress.SingleBar(
+      {},
+      cliProgress.Presets.shades_classic
+    );
+    progressBar.start(newAssets.length, 0);
+
+    await Promise.all(
+      newAssets.map(async (asset) => {
+        const res = await startUpload(endpoint, accessToken, asset, deviceId);
+        if (res == "ok") {
+          progressBar.increment();
+        }
+      })
+    );
+
+    progressBar.stop();
+
+    process.exit(0);
+  }
+}
+
+async function startUpload(endpoint, accessToken, asset, deviceId) {
+  try {
+    const fileStat = await stat(asset.filePath);
+    var data = new FormData();
+    data.append("deviceAssetId", asset.id);
+    data.append("deviceId", deviceId);
+    data.append("assetType", getAssetType(asset.filePath));
+    data.append("createdAt", fileStat.mtime.toISOString());
+    data.append("modifiedAt", fileStat.mtime.toISOString());
+    data.append("isFavorite", JSON.stringify(false));
+    data.append("fileExtension", path.extname(asset.filePath));
+    data.append("duration", JSON.stringify(null));
+    data.append("files", fs.createReadStream(asset.filePath));
+
+    const config = {
+      method: "post",
+      url: `${endpoint}/asset/upload`,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...data.getHeaders(),
+      },
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+      data: data,
+    };
+
+    const res = await axios(config);
+
+    return res.data;
+  } catch (e) {
+    log(chalk.red("\nError uploading asset", e));
+  }
 }
 
 async function getAssetInfoFromServer(endpoint, accessToken, deviceId) {
@@ -157,6 +237,12 @@ async function login(endpoint, email, password) {
     log(chalk.red("Error logging in - check email and password"));
     process.exit(1);
   }
+}
+
+function getAssetType(filePath) {
+  const mimeType = mime.lookup(filePath);
+
+  return mimeType.split("/")[0].toUpperCase();
 }
 // node bin/index.js upload --email testuser@email.com --password password --server 192.168.1.216 --port 2283 -d /home/alex/Downloads/db6e94e1-ab1d-4ff0-a3b7-ba7d9e7b9d84
 // node bin/index.js upload --email testuser@email.com --password password --server 192.168.1.216 --port 2283 -d /Users/alex/Documents/immich-cli-upload-test-location
