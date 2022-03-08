@@ -9,6 +9,7 @@ const readline = require("readline");
 var path = require("path");
 var FormData = require("form-data");
 const cliProgress = require("cli-progress");
+const { stat } = require("fs/promises");
 const { getVideoDurationInSeconds } = require("get-video-duration");
 
 // GLOBAL
@@ -19,9 +20,6 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
-const util = require("util");
-const { stat } = require("fs/promises");
-const question = util.promisify(rl.question).bind(rl);
 
 const SUPPORTED_MIME = [
   // IMAGES
@@ -39,7 +37,7 @@ const SUPPORTED_MIME = [
 program
   .name("Immich CLI Utilities")
   .description("Immich CLI Utilities toolset")
-  .version("0.2.0");
+  .version("0.3.0");
 
 program
   .command("upload")
@@ -133,33 +131,43 @@ async function upload({ email, password, server, port, directory }) {
   }
 
   // Ask user
-  const answer = await question("Do you want to start upload now? (y/n) ");
+  try {
+    rl.question("Do you want to start upload now? (y/n) ", async (answer) => {
+      if (answer == "n") {
+        log(chalk.yellow("Abort Upload Process"));
+        process.exit(1);
+      }
 
-  if (answer == "n") {
-    log(chalk.yellow("Abort Upload Process"));
+      if (answer == "y") {
+        log(chalk.green("Start uploading..."));
+        const progressBar = new cliProgress.SingleBar(
+          {},
+          cliProgress.Presets.shades_classic
+        );
+        progressBar.start(newAssets.length, 0);
+
+        await Promise.all(
+          newAssets.map(async (asset) => {
+            const res = await startUpload(
+              endpoint,
+              accessToken,
+              asset,
+              deviceId
+            );
+            if (res == "ok") {
+              progressBar.increment();
+            }
+          })
+        );
+
+        progressBar.stop();
+
+        process.exit(0);
+      }
+    });
+  } catch (e) {
+    log(chalk.red("Error reading input from user "), e);
     process.exit(1);
-  }
-
-  if (answer == "y") {
-    log(chalk.green("Start uploading..."));
-    const progressBar = new cliProgress.SingleBar(
-      {},
-      cliProgress.Presets.shades_classic
-    );
-    progressBar.start(newAssets.length, 0);
-
-    await Promise.all(
-      newAssets.map(async (asset) => {
-        const res = await startUpload(endpoint, accessToken, asset, deviceId);
-        if (res == "ok") {
-          progressBar.increment();
-        }
-      })
-    );
-
-    progressBar.stop();
-
-    process.exit(0);
   }
 }
 
