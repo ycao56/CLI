@@ -30,7 +30,8 @@
     "get-video-duration": "^4.0.0",
     "mime-types": "^2.1.34",
     "node-machine-id": "^1.1.12",
-    "systeminformation": "^5.11.6"
+    "systeminformation": "^5.11.6",
+    "simple-thumbnail": "^1.6.5"
   },
   "bin": {
     "immich": "./bin/index.js"

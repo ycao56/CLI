@@ -11,6 +11,9 @@ var FormData = require("form-data");
 const cliProgress = require("cli-progress");
 const { stat } = require("fs/promises");
 const { getVideoDurationInSeconds } = require("get-video-duration");
+const genThumbnail = require('simple-thumbnail');
+const os = require("os");
+
 
 // GLOBAL
 const mime = require("mime-types");
@@ -182,6 +185,14 @@ async function startUpload(endpoint, accessToken, asset, deviceId) {
       );
     }
 
+    const tempDir = os.tmpdir();
+
+    const extension = path.extname(asset.filePath);
+    const fileNameWithoutExtension = path.basename(asset.filePath, extension);
+    const thumbnailFilePath = tempDir + fileNameWithoutExtension + '.jpg';
+
+    await genThumbnail(asset.filePath, thumbnailFilePath , '512x512');
+
     var data = new FormData();
     data.append("deviceAssetId", asset.id);
     data.append("deviceId", deviceId);
@@ -196,7 +207,23 @@ async function startUpload(endpoint, accessToken, asset, deviceId) {
         ? JSON.stringify(null)
         : formatVideoDuration(videoDuration)
     );
-    data.append("files", fs.createReadStream(asset.filePath));
+    data.append("assetData", fs.createReadStream(asset.filePath));
+
+    var thumbnailStream = fs.createReadStream(thumbnailFilePath, { emitClose: true });
+    thumbnailStream.on("close", function () {
+                         thumbnailStream.destroy((err) => {
+                            if (err) {
+                                console.log("Error in destroying the stream " + err);
+                            }
+                         }); 
+                         fs.unlink(thumbnailFilePath, function (err) {
+                            if (err) {
+                                console.log(`Error in deleting the file: ${err}.`);
+                            }
+                         });
+    });
+ 
+    data.append("thumbnailData", thumbnailStream);
 
     const config = {
       method: "post",
