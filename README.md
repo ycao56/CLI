@@ -46,7 +46,7 @@ immich upload --email testuser@email.com --password password --server 192.168.1.
 1 - Clone Repository
 
 ```
-git clone https://github.com/alextran1502/immich_cli
+git clone https://github.com/alextran1502/immich-cli
 ```
 
 2 - Install dependencies
