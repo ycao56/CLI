@@ -11,9 +11,8 @@ var FormData = require("form-data");
 const cliProgress = require("cli-progress");
 const { stat } = require("fs/promises");
 const { getVideoDurationInSeconds } = require("get-video-duration");
-const genThumbnail = require('simple-thumbnail');
+const genThumbnail = require("simple-thumbnail");
 const os = require("os");
-
 
 // GLOBAL
 const mime = require("mime-types");
@@ -40,22 +39,24 @@ const SUPPORTED_MIME = [
 program
   .name("Immich CLI Utilities")
   .description("Immich CLI Utilities toolset")
-  .version("0.3.0");
+  .version("0.4.0");
 
 program
   .command("upload")
   .description("Upload images and videos in a directory to Immich's server")
   .requiredOption("-e, --email <value>", "User's Email")
   .requiredOption("-pw, --password <value>", "User's Password")
-  .requiredOption("-s, --server <value>", "Server IPv4")
-  .requiredOption("-p, --port <value>", "Server Port")
+  .requiredOption(
+    "-s, --server <value>",
+    "Server address (http://<your-ip>:2283/api or https://<your-domain>/api)"
+  )
   .requiredOption("-d, --directory <value>", "Target Directory")
   .action(upload);
 
 program.parse(process.argv);
 
-async function upload({ email, password, server, port, directory }) {
-  const endpoint = `http://${server}:${port}`;
+async function upload({ email, password, server, directory }) {
+  const endpoint = server;
   const deviceId = (await si.uuid()).os;
   const osInfo = (await si.osInfo()).distro;
   const localAssets = [];
@@ -179,6 +180,7 @@ async function startUpload(endpoint, accessToken, asset, deviceId) {
     const assetType = getAssetType(asset.filePath);
     const fileStat = await stat(asset.filePath);
     let videoDuration = 0;
+
     if (assetType == "VIDEO") {
       videoDuration = await getVideoDurationInSeconds(
         fs.createReadStream(asset.filePath)
@@ -189,9 +191,6 @@ async function startUpload(endpoint, accessToken, asset, deviceId) {
 
     const extension = path.extname(asset.filePath);
     const fileNameWithoutExtension = path.basename(asset.filePath, extension);
-    const thumbnailFilePath = tempDir + fileNameWithoutExtension + '.jpg';
-
-    await genThumbnail(asset.filePath, thumbnailFilePath , '512x512');
 
     var data = new FormData();
     data.append("deviceAssetId", asset.id);
@@ -204,26 +203,11 @@ async function startUpload(endpoint, accessToken, asset, deviceId) {
     data.append(
       "duration",
       assetType == "IMAGE"
-        ? JSON.stringify(null)
+        ? "0:00:00.000000"
         : formatVideoDuration(videoDuration)
     );
-    data.append("assetData", fs.createReadStream(asset.filePath));
 
-    var thumbnailStream = fs.createReadStream(thumbnailFilePath, { emitClose: true });
-    thumbnailStream.on("close", function () {
-                         thumbnailStream.destroy((err) => {
-                            if (err) {
-                                console.log("Error in destroying the stream " + err);
-                            }
-                         }); 
-                         fs.unlink(thumbnailFilePath, function (err) {
-                            if (err) {
-                                console.log(`Error in deleting the file: ${err}.`);
-                            }
-                         });
-    });
- 
-    data.append("thumbnailData", thumbnailStream);
+    data.append("assetData", fs.createReadStream(asset.filePath));
 
     const config = {
       method: "post",
@@ -311,6 +295,6 @@ function formatVideoDuration(second) {
   }
   return hours + ":" + minutes + ":" + seconds;
 }
-// node bin/index.js upload --email testuser@email.com --password password --server 192.168.1.216 --port 2283 -d /home/alex/Downloads/db6e94e1-ab1d-4ff0-a3b7-ba7d9e7b9d84
-// node bin/index.js upload --email testuser@email.com --password password --server 192.168.1.216 --port 2283 -d /Users/alex/Documents/immich-cli-upload-test-location
+
+// node bin/index.js upload --email testuser@email.com --password password --server http://192.168.1.216:2283/api -d /Users/alex/Documents/immich-cli-upload-test-location
 // node bin/index.js upload --help
