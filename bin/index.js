@@ -39,7 +39,7 @@ const SUPPORTED_MIME = [
 program
   .name("Immich CLI Utilities")
   .description("Immich CLI Utilities toolset")
-  .version("0.4.0");
+  .version("0.5.0");
 
 program
   .command("upload")
