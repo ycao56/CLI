@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 const { default: axios } = require("axios");
-const { program } = require("commander");
+const { program, Option } = require("commander");
 const fsPromise = require("fs").promises;
 const fs = require("fs");
 const { fdir } = require("fdir");
@@ -44,13 +44,13 @@ program
 program
   .command("upload")
   .description("Upload images and videos in a directory to Immich's server")
-  .requiredOption("-e, --email <value>", "User's Email")
-  .requiredOption("-pw, --password <value>", "User's Password")
-  .requiredOption(
+  .addOption(new Option("-e, --email <value>", "User's Email").env("IMMICH_USER_EMAIL"))
+  .addOption(new Option("-pw, --password <value>", "User's Password").env("IMMICH_USER_PASSWORD"))
+  .addOption(new Option(
     "-s, --server <value>",
-    "Server address (http://<your-ip>:2283/api or https://<your-domain>/api)"
-  )
-  .requiredOption("-d, --directory <value>", "Target Directory")
+    "Server address (http://<your-ip>:2283/api or https://<your-domain>/api)")
+    .env("IMMICH_SERVER_ADDRESS"))
+  .addOption(new Option("-d, --directory <value>", "Target Directory").env("IMMICH_TARGET_DIRECTORY"))
   .action(upload);
 
 program.parse(process.argv);
