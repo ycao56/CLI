@@ -51,11 +51,12 @@ program
     "Server address (http://<your-ip>:2283/api or https://<your-domain>/api)")
     .env("IMMICH_SERVER_ADDRESS"))
   .addOption(new Option("-d, --directory <value>", "Target Directory").env("IMMICH_TARGET_DIRECTORY"))
+  .addOption(new Option("-y, --yes", "Assume yes on all interactive prompts").env("IMMICH_ASSUME_YES"))
   .action(upload);
 
 program.parse(process.argv);
 
-async function upload({ email, password, server, directory }) {
+async function upload({ email, password, server, directory, yes: assume_yes }) {
   const endpoint = server;
   const deviceId = (await si.uuid()).os;
   const osInfo = (await si.osInfo()).distro;
@@ -138,7 +139,7 @@ async function upload({ email, password, server, directory }) {
   try {
     //There is a promise API for readline, but it's currently experimental
     //https://nodejs.org/api/readline.html#promises-api
-    const answer = await new Promise(resolve => {
+    const answer = assume_yes ? "y" : await new Promise(resolve => {
       rl.question("Do you want to start upload now? (y/n) ", resolve);
     })
 
