@@ -56,7 +56,7 @@ program
 
 program.parse(process.argv);
 
-async function upload({ email, password, server, directory, yes: assume_yes }) {
+async function upload({ email, password, server, directory, yes: assumeYes }) {
   const endpoint = server;
   const deviceId = (await si.uuid()).os;
   const osInfo = (await si.osInfo()).distro;
@@ -139,7 +139,7 @@ async function upload({ email, password, server, directory, yes: assume_yes }) {
   try {
     //There is a promise API for readline, but it's currently experimental
     //https://nodejs.org/api/readline.html#promises-api
-    const answer = assume_yes ? "y" : await new Promise(resolve => {
+    const answer = assumeYes ? "y" : await new Promise(resolve => {
       rl.question("Do you want to start upload now? (y/n) ", resolve);
     })
 
