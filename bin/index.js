@@ -58,7 +58,7 @@ program.parse(process.argv);
 
 async function upload({ email, password, server, directory, yes: assumeYes }) {
   const endpoint = server;
-  const deviceId = (await si.uuid()).os;
+  const deviceId = (await si.uuid()).os || "CLI";
   const osInfo = (await si.osInfo()).distro;
   const localAssets = [];
   const newAssets = [];
