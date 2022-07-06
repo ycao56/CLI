@@ -1,6 +1,6 @@
 {
   "name": "immich",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Immich CLI",
   "main": "index.js",
   "scripts": {
