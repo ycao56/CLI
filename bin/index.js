@@ -51,11 +51,12 @@ program
     "Server address (http://<your-ip>:2283/api or https://<your-domain>/api)")
     .env("IMMICH_SERVER_ADDRESS"))
   .addOption(new Option("-d, --directory <value>", "Target Directory").env("IMMICH_TARGET_DIRECTORY"))
+  .addOption(new Option("-y, --yes", "Assume yes on all interactive prompts").env("IMMICH_ASSUME_YES"))
   .action(upload);
 
 program.parse(process.argv);
 
-async function upload({ email, password, server, directory }) {
+async function upload({ email, password, server, directory, yes: assumeYes }) {
   const endpoint = server;
   const deviceId = (await si.uuid()).os;
   const osInfo = (await si.osInfo()).distro;
@@ -136,39 +137,43 @@ async function upload({ email, password, server, directory }) {
 
   // Ask user
   try {
-    rl.question("Do you want to start upload now? (y/n) ", async (answer) => {
-      if (answer == "n") {
-        log(chalk.yellow("Abort Upload Process"));
-        process.exit(1);
-      }
+    //There is a promise API for readline, but it's currently experimental
+    //https://nodejs.org/api/readline.html#promises-api
+    const answer = assumeYes ? "y" : await new Promise(resolve => {
+      rl.question("Do you want to start upload now? (y/n) ", resolve);
+    })
 
-      if (answer == "y") {
-        log(chalk.green("Start uploading..."));
-        const progressBar = new cliProgress.SingleBar(
-          {},
-          cliProgress.Presets.shades_classic
-        );
-        progressBar.start(newAssets.length, 0);
+    if (answer == "n") {
+      log(chalk.yellow("Abort Upload Process"));
+      process.exit(1);
+    }
 
-        await Promise.all(
-          newAssets.map(async (asset) => {
-            const res = await startUpload(
-              endpoint,
-              accessToken,
-              asset,
-              deviceId
-            );
-            if (res == "ok") {
-              progressBar.increment();
-            }
-          })
-        );
+    if (answer == "y") {
+      log(chalk.green("Start uploading..."));
+      const progressBar = new cliProgress.SingleBar(
+        {},
+        cliProgress.Presets.shades_classic
+      );
+      progressBar.start(newAssets.length, 0);
 
-        progressBar.stop();
+      await Promise.all(
+        newAssets.map(async (asset) => {
+          const res = await startUpload(
+            endpoint,
+            accessToken,
+            asset,
+            deviceId
+          );
+          if (res == "ok") {
+            progressBar.increment();
+          }
+        })
+      );
 
-        process.exit(0);
-      }
-    });
+      progressBar.stop();
+
+      process.exit(0);
+    }
   } catch (e) {
     log(chalk.red("Error reading input from user "), e);
     process.exit(1);
