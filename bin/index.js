@@ -230,7 +230,7 @@ async function startUpload(endpoint, accessToken, asset, deviceId) {
 
     return res.data;
   } catch (e) {
-    log(chalk.red("\nError uploading asset", e));
+    log(chalk.red(`\nError uploading asset [${asset.filePath}]:`, e));
   }
 }
 
