@@ -1,19 +1,17 @@
 #! /usr/bin/env node
 const { default: axios } = require("axios");
 const { program, Option } = require("commander");
-const fsPromise = require("fs").promises;
 const fs = require("fs");
 const { fdir } = require("fdir");
 const si = require("systeminformation");
 const readline = require("readline");
-var path = require("path");
-var FormData = require("form-data");
+const path = require("path");
+const FormData = require("form-data");
 const cliProgress = require("cli-progress");
 const { stat } = require("fs/promises");
 const { getVideoDurationInSeconds } = require("get-video-duration");
-const genThumbnail = require("simple-thumbnail");
-const os = require("os");
-
+const exifr = require("exifr");
+var pjson = require("../package.json");
 // GLOBAL
 const mime = require("mime-types");
 const chalk = require("chalk");
@@ -39,19 +37,35 @@ const SUPPORTED_MIME = [
 program
   .name("Immich CLI Utilities")
   .description("Immich CLI Utilities toolset")
-  .version("0.6.0");
+  .version(pjson.version);
 
 program
   .command("upload")
   .description("Upload images and videos in a directory to Immich's server")
-  .addOption(new Option("-e, --email <value>", "User's Email").env("IMMICH_USER_EMAIL"))
-  .addOption(new Option("-pw, --password <value>", "User's Password").env("IMMICH_USER_PASSWORD"))
-  .addOption(new Option(
-    "-s, --server <value>",
-    "Server address (http://<your-ip>:2283/api or https://<your-domain>/api)")
-    .env("IMMICH_SERVER_ADDRESS"))
-  .addOption(new Option("-d, --directory <value>", "Target Directory").env("IMMICH_TARGET_DIRECTORY"))
-  .addOption(new Option("-y, --yes", "Assume yes on all interactive prompts").env("IMMICH_ASSUME_YES"))
+  .addOption(
+    new Option("-e, --email <value>", "User's Email").env("IMMICH_USER_EMAIL")
+  )
+  .addOption(
+    new Option("-pw, --password <value>", "User's Password").env(
+      "IMMICH_USER_PASSWORD"
+    )
+  )
+  .addOption(
+    new Option(
+      "-s, --server <value>",
+      "Server address (http://<your-ip>:2283/api or https://<your-domain>/api)"
+    ).env("IMMICH_SERVER_ADDRESS")
+  )
+  .addOption(
+    new Option("-d, --directory <value>", "Target Directory").env(
+      "IMMICH_TARGET_DIRECTORY"
+    )
+  )
+  .addOption(
+    new Option("-y, --yes", "Assume yes on all interactive prompts").env(
+      "IMMICH_ASSUME_YES"
+    )
+  )
   .action(upload);
 
 program.parse(process.argv);
@@ -139,9 +153,11 @@ async function upload({ email, password, server, directory, yes: assumeYes }) {
   try {
     //There is a promise API for readline, but it's currently experimental
     //https://nodejs.org/api/readline.html#promises-api
-    const answer = assumeYes ? "y" : await new Promise(resolve => {
-      rl.question("Do you want to start upload now? (y/n) ", resolve);
-    })
+    const answer = assumeYes
+      ? "y"
+      : await new Promise((resolve) => {
+          rl.question("Do you want to start upload now? (y/n) ", resolve);
+        });
 
     if (answer == "n") {
       log(chalk.yellow("Abort Upload Process"));
@@ -158,12 +174,7 @@ async function upload({ email, password, server, directory, yes: assumeYes }) {
 
       await Promise.all(
         newAssets.map(async (asset) => {
-          const res = await startUpload(
-            endpoint,
-            accessToken,
-            asset,
-            deviceId
-          );
+          const res = await startUpload(endpoint, accessToken, asset, deviceId);
           if (res == "ok") {
             progressBar.increment();
           }
@@ -184,7 +195,6 @@ async function startUpload(endpoint, accessToken, asset, deviceId) {
   try {
     const assetType = getAssetType(asset.filePath);
     const fileStat = await stat(asset.filePath);
-    let videoDuration = 0;
 
     if (assetType == "VIDEO") {
       videoDuration = await getVideoDurationInSeconds(
@@ -192,25 +202,26 @@ async function startUpload(endpoint, accessToken, asset, deviceId) {
       );
     }
 
-    const tempDir = os.tmpdir();
+    let exifData = null;
 
-    const extension = path.extname(asset.filePath);
-    const fileNameWithoutExtension = path.basename(asset.filePath, extension);
+    if (assetType !== "VIDEO") {
+      exifData = await exifr.parse(asset.filePath);
+    }
+
+    const createdAt =
+      exifData && exifData.DateTimeOriginal != null
+        ? new Date(exifData.DateTimeOriginal).toISOString()
+        : fileStat.mtime.toISOString();
 
     var data = new FormData();
     data.append("deviceAssetId", asset.id);
     data.append("deviceId", deviceId);
     data.append("assetType", assetType);
-    data.append("createdAt", fileStat.mtime.toISOString());
+    data.append("createdAt", createdAt);
     data.append("modifiedAt", fileStat.mtime.toISOString());
     data.append("isFavorite", JSON.stringify(false));
     data.append("fileExtension", path.extname(asset.filePath));
-    data.append(
-      "duration",
-      assetType == "IMAGE"
-        ? "0:00:00.000000"
-        : formatVideoDuration(videoDuration)
-    );
+    data.append("duration", "0:00:00.000000");
 
     data.append("assetData", fs.createReadStream(asset.filePath));
 
