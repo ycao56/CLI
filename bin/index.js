@@ -174,9 +174,19 @@ async function upload({ email, password, server, directory, yes: assumeYes }) {
 
       await Promise.all(
         newAssets.map(async (asset) => {
-          const res = await startUpload(endpoint, accessToken, asset, deviceId);
-          if (res == "ok") {
-            progressBar.increment();
+          try {
+            const { id } = await startUpload(
+              endpoint,
+              accessToken,
+              asset,
+              deviceId
+            );
+
+            if (id !== "") {
+              progressBar.increment();
+            }
+          } catch (err) {
+            log(chalk.red(err.message));
           }
         })
       );
