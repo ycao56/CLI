@@ -19,6 +19,7 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
+let errorAssets = [];
 
 const SUPPORTED_MIME = [
   // IMAGES
@@ -172,14 +173,9 @@ async function upload({ email, password, server, directory, yes: assumeYes }) {
 
       for (const asset of newAssets) {
         try {
-          const { id } = await startUpload(
-            endpoint,
-            accessToken,
-            asset,
-            deviceId
-          );
+          const res = await startUpload(endpoint, accessToken, asset, deviceId);
 
-          if (id !== "") {
+          if (res && res.status == 201) {
             progressBar.increment();
           }
         } catch (err) {
@@ -188,6 +184,15 @@ async function upload({ email, password, server, directory, yes: assumeYes }) {
       }
 
       progressBar.stop();
+
+      log(
+        chalk.yellow(`Failed to upload ${errorAssets.length} files `),
+        errorAssets
+      );
+
+      if (errorAssets.length > 0) {
+        process.exit(1);
+      }
 
       process.exit(0);
     }
@@ -238,10 +243,10 @@ async function startUpload(endpoint, accessToken, asset, deviceId) {
     };
 
     const res = await axios(config);
-
-    return res.data;
+    return res;
   } catch (e) {
-    log(chalk.red(`\nError uploading asset [${asset.filePath}]:`, e));
+    errorAssets.push({ file: asset.filePath, reason: e });
+    return null;
   }
 }
 
