@@ -25,7 +25,6 @@ const SUPPORTED_MIME = [
   "image/heif",
   "image/heic",
   "image/jpeg",
-  "image/gif",
   "image/png",
 
   // VIDEO
@@ -171,24 +170,22 @@ async function upload({ email, password, server, directory, yes: assumeYes }) {
       );
       progressBar.start(newAssets.length, 0);
 
-      await Promise.all(
-        newAssets.map(async (asset) => {
-          try {
-            const { id } = await startUpload(
-              endpoint,
-              accessToken,
-              asset,
-              deviceId
-            );
+      for (const asset of newAssets) {
+        try {
+          const { id } = await startUpload(
+            endpoint,
+            accessToken,
+            asset,
+            deviceId
+          );
 
-            if (id !== "") {
-              progressBar.increment();
-            }
-          } catch (err) {
-            log(chalk.red(err.message));
+          if (id !== "") {
+            progressBar.increment();
           }
-        })
-      );
+        } catch (err) {
+          log(chalk.red(err.message));
+        }
+      }
 
       progressBar.stop();
 
