@@ -9,7 +9,6 @@ const path = require("path");
 const FormData = require("form-data");
 const cliProgress = require("cli-progress");
 const { stat } = require("fs/promises");
-const { getVideoDurationInSeconds } = require("get-video-duration");
 const exifr = require("exifr");
 var pjson = require("../package.json");
 // GLOBAL
@@ -206,12 +205,6 @@ async function startUpload(endpoint, accessToken, asset, deviceId) {
     const assetType = getAssetType(asset.filePath);
     const fileStat = await stat(asset.filePath);
 
-    if (assetType == "VIDEO") {
-      videoDuration = await getVideoDurationInSeconds(
-        fs.createReadStream(asset.filePath)
-      );
-    }
-
     let exifData = null;
 
     if (assetType !== "VIDEO") {
@@ -302,24 +295,6 @@ function getAssetType(filePath) {
   const mimeType = mime.lookup(filePath);
 
   return mimeType.split("/")[0].toUpperCase();
-}
-
-function formatVideoDuration(second) {
-  var sec_num = parseInt(second, 10); // don't forget the second param
-  var hours = Math.floor(sec_num / 3600);
-  var minutes = Math.floor((sec_num - hours * 3600) / 60);
-  var seconds = sec_num - hours * 3600 - minutes * 60;
-
-  if (hours < 10) {
-    hours = hours;
-  }
-  if (minutes < 10) {
-    minutes = "0" + minutes;
-  }
-  if (seconds < 10) {
-    seconds = "0" + seconds;
-  }
-  return hours + ":" + minutes + ":" + seconds;
 }
 
 // node bin/index.js upload --email testuser@email.com --password password --server http://192.168.1.216:2283/api -d /Users/alex/Documents/immich-cli-upload-test-location
