@@ -1,19 +1,20 @@
 #! /usr/bin/env node
-const { default: axios } = require("axios");
-const { program, Option } = require("commander");
-const fs = require("fs");
-const { fdir } = require("fdir");
-const si = require("systeminformation");
-const readline = require("readline");
-const path = require("path");
-const FormData = require("form-data");
-const cliProgress = require("cli-progress");
-const { stat } = require("fs/promises");
-const exifr = require("exifr");
-var pjson = require("../package.json");
+import { program, Option } from "commander";
+import fs from "fs";
+import { fdir } from "fdir";
+import si from "systeminformation";
+import readline from "readline";
+import path from "path";
+import FormData from "form-data";
+import cliProgress from "cli-progress";
+import { stat, readFile } from "fs/promises";
+import exifr from "exifr";
+import axios from "axios";
+import pjson from "../package.json" assert { type: "json" };
+
 // GLOBAL
-const mime = require("mime-types");
-const chalk = require("chalk");
+import mime from "mime-types";
+import chalk from "chalk";
 const log = console.log;
 const rl = readline.createInterface({
   input: process.stdin,
@@ -108,7 +109,6 @@ async function upload({ email, password, server, directory, yes: assumeYes }) {
     const mimeType = mime.lookup(filePath);
     if (SUPPORTED_MIME.includes(mimeType)) {
       const fileStat = fs.statSync(filePath);
-
       localAssets.push({
         id: Math.round(
           fileStat.ctimeMs + fileStat.mtimeMs + fileStat.birthtimeMs
@@ -208,9 +208,20 @@ async function startUpload(endpoint, accessToken, asset, deviceId) {
     const fileStat = await stat(asset.filePath);
 
     let exifData = null;
-
-    if (assetType !== "VIDEO") {
-      exifData = await exifr.parse(asset.filePath);
+    if (assetType != "VIDEO") {
+      exifData = await exifr.parse(asset.filePath, {
+        tiff: true,
+        ifd0: true,
+        ifd1: true,
+        exif: true,
+        gps: true,
+        rop: true,
+        xmp: true,
+        icc: true,
+        iptc: true,
+        jfif: true,
+        ihdr: true,
+      });
     }
 
     const createdAt =
