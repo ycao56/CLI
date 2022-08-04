@@ -80,7 +80,6 @@ async function upload({email, password, server, directory, yes: assumeYes, delet
     const osInfo = (await si.osInfo()).distro;
     const localAssets = [];
     const newAssets = [];
-    console.log(deleteAssets)
 
     // Ping server
     log("[1] Pinging server...");
@@ -186,7 +185,7 @@ async function upload({email, password, server, directory, yes: assumeYes, delet
                         if (deleteLocalAsset == "y") {
                             fs.unlink(asset.filePath, (err) => {
                                 if (err) {
-                                    console.log(err)
+                                    log(err)
                                     return
                                 }
                             })
