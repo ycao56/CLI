@@ -65,16 +65,22 @@ program
             "IMMICH_ASSUME_YES"
         )
     )
+    .addOption(
+        new Option("-da, --delete", "Delete local assets after upload").env(
+            "IMMICH_DELETE_ASSETS"
+        )
+    )
     .action(upload);
 
 program.parse(process.argv);
 
-async function upload({email, password, server, directory, yes: assumeYes}) {
+async function upload({email, password, server, directory, yes: assumeYes, delete: deleteAssets}) {
     const endpoint = server;
     const deviceId = (await si.uuid()).os || "CLI";
     const osInfo = (await si.osInfo()).distro;
     const localAssets = [];
     const newAssets = [];
+    console.log(deleteAssets)
 
     // Ping server
     log("[1] Pinging server...");
@@ -156,6 +162,7 @@ async function upload({email, password, server, directory, yes: assumeYes}) {
             : await new Promise((resolve) => {
                 rl.question("Do you want to start upload now? (y/n) ", resolve);
             });
+        const deleteLocalAsset = deleteAssets ? "y" : "n";
 
         if (answer == "n") {
             log(chalk.yellow("Abort Upload Process"));
@@ -176,6 +183,15 @@ async function upload({email, password, server, directory, yes: assumeYes}) {
 
                     if (res && res.status == 201) {
                         progressBar.increment();
+                        if (deleteLocalAsset == "y") {
+                            fs.unlink(asset.filePath, (err) => {
+                                if (err) {
+                                    console.log(err)
+                                    return
+                                }
+                            })
+
+                        }
                     }
                 } catch (err) {
                     log(chalk.red(err.message));
