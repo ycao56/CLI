@@ -41,6 +41,13 @@ immich upload --email testuser@email.com --password password --server http://192
 
 ---
 
+### Parameters
+
+| Parameter        | Description                           |
+|------------------|---------------------------------------|
+| --yes / -y       | Assume yes on all interactive prompts |
+| --delete   / -da | Delete local assets after upload      |
+
 ### Run via Docker
 
 Be aware that as this runs inside a container, it mounts your current directory as a volume and for the -d flag you need to use the path inside the container.
