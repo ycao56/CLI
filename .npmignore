@@ -1,4 +1,4 @@
-.github
+.github/
 .gitignore
 .prettierrc
 node_modules/
@@ -7,8 +7,8 @@ node_modules/
 # source
 **/*.ts
 *.ts
-/test
-/types
+test/
+types/
 
 # definitions
 !**/*.d.ts
