@@ -1,14 +1,14 @@
-.github/
+/.github
 .gitignore
 .prettierrc
-node_modules/
+/node_modules
 .DS_Store
 
 # source
 **/*.ts
 *.ts
-test/
-types/
+/test
+/types
 
 # definitions
 !**/*.d.ts
