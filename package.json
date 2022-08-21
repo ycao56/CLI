@@ -36,11 +36,6 @@
     "simple-thumbnail": "^1.6.5",
     "systeminformation": "^5.11.6"
   },
-  "files": [
-    "LICENSE",
-    "README.md",
-    "bin"
-  ],
   "bin": {
     "immich": "./bin/index.js"
   },

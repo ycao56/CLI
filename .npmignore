@@ -22,3 +22,4 @@ tsconfig.json
 .eslintrc.js
 .eslintignore
 .release-it.json
+Dockerfile
