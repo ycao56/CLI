@@ -6,7 +6,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-RUN npm install -g
+RUN npm run build && npm install -g
 
 WORKDIR /import
 ENTRYPOINT [ "immich" ]
