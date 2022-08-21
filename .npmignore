@@ -1,0 +1,25 @@
+/.github
+.gitignore
+.prettierrc
+/node_modules
+.DS_Store
+
+# source
+**/*.ts
+*.ts
+/test
+/types
+
+# definitions
+!**/*.d.ts
+!*.d.ts
+
+# configuration
+tsconfig.json
+/test/jest-config.json
+/.vscode
+.commitlintrc.json
+.eslintrc.js
+.eslintignore
+.release-it.json
+Dockerfile
