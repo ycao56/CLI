@@ -67,6 +67,10 @@ program
     )
   )
   .addOption(
+    new Option('-al --album [album]', 'Create albums for assets based on the parent folder or a given name. Only adds new assets to the album(s)'
+    ).env('IMMICH_CREATE_ALBUMS')
+  )
+  .addOption(
     new Option('-da, --delete', 'Delete local assets after upload').env(
       'IMMICH_DELETE_ASSETS'
     )
@@ -75,7 +79,7 @@ program
 
 program.parse(process.argv);
 
-async function upload({ email, password, server, directory, yes: assumeYes, delete: deleteAssets }: any) {
+async function upload({ email, password, server, directory, yes: assumeYes, delete: deleteAssets, album: createAlbums }: any) {
   const endpoint = server;
   const deviceId = (await si.uuid()).os || 'CLI';
   const osInfo = (await si.osInfo()).distro;
@@ -177,10 +181,17 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
       );
       progressBar.start(newAssets.length, 0);
 
+      const assetDirectoryMap: Map<string, string[]> = new Map();
+
       for (const asset of newAssets) {
+        const album = asset.filePath.split(path.sep).slice(-2)[0];
+        if (!assetDirectoryMap.has(album)) {
+          assetDirectoryMap.set(album, []);
+        }
+
         try {
           const res = await startUpload(endpoint, accessToken, asset, deviceId);
-
+          
           if (res && res.status == 201) {
             progressBar.increment();
             if (deleteLocalAsset == 'y') {
@@ -192,6 +203,7 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
               })
 
             }
+            assetDirectoryMap.get(album)!.push(res!.data.id);
           }
         } catch (err) {
           log(chalk.red(err.message));
@@ -199,6 +211,45 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
       }
 
       progressBar.stop();
+
+      if (createAlbums) {
+        log(chalk.green('Creating albums...'));
+
+        const serverAlbums = await getAlbumsFromServer(endpoint, accessToken);
+
+        if (typeof createAlbum === 'boolean') {
+          progressBar.start(assetDirectoryMap.size, 0);
+
+          for (const localAlbum of assetDirectoryMap.keys()) {
+            const serverAlbumIndex = serverAlbums.findIndex((album: any) => album.albumName === localAlbum);
+            let albumId: string;
+            if (serverAlbumIndex > -1) {
+              albumId = serverAlbums[serverAlbumIndex].id;
+            } else {
+              albumId = await createAlbum(endpoint, accessToken, localAlbum);
+            }
+  
+            if(albumId) {
+              await addAssetsToAlbum(endpoint, accessToken, albumId, assetDirectoryMap.get(localAlbum)!);
+            }
+  
+            progressBar.increment();
+          }
+
+          progressBar.stop();
+        } else {
+          const serverAlbumIndex = serverAlbums.findIndex((album: any) => album.albumName === createAlbums);
+          let albumId: string;
+
+          if (serverAlbumIndex > -1) {
+            albumId = serverAlbums[serverAlbumIndex].id;
+          } else {
+            albumId = await createAlbum(endpoint, accessToken, createAlbums);
+          }
+
+          await addAssetsToAlbum(endpoint, accessToken, albumId, Array.from(assetDirectoryMap.values()).flat());
+        }
+      }
 
       log(
         chalk.yellow(`Failed to upload ${errorAssets.length} files `),
@@ -273,6 +324,39 @@ async function startUpload(endpoint: string, accessToken: string, asset: any, de
   } catch (e) {
     errorAssets.push({ file: asset.filePath, reason: e });
     return null;
+  }
+}
+
+async function getAlbumsFromServer(endpoint: string, accessToken: string) {
+  try {
+    const res = await axios.get(`${endpoint}/album`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return res.data;
+  } catch(e) {
+    log(chalk.red('Error getting albums'), e);
+    process.exit(1);
+  }
+}
+
+async function createAlbum(endpoint: string, accessToken: string, albumName: string) {
+  try {
+    const res = await axios.post(`${endpoint}/album`, { albumName }, {
+      headers: { Authorization: `Bearer ${accessToken} `}
+    });
+    return res.data.id;
+  } catch(e) {
+    log(chalk.red(`Error creating album '${albumName}'`), e);
+  }
+}
+
+async function addAssetsToAlbum(endpoint: string, accessToken: string, albumId: string, assetIds: string[]) {
+  try {
+    await axios.put(`${endpoint}/album/${albumId}/assets`, { assetIds: [...new Set(assetIds)] }, {
+      headers: { Authorization: `Bearer ${accessToken} `}
+    });
+  } catch(e) {
+    log(chalk.red('Error adding asset to album'), e);
   }
 }
 
