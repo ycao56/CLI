@@ -217,7 +217,7 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
 
         const serverAlbums = await getAlbumsFromServer(endpoint, accessToken);
 
-        if (typeof createAlbum === 'boolean') {
+        if (typeof createAlbums === 'boolean') {
           progressBar.start(assetDirectoryMap.size, 0);
 
           for (const localAlbum of assetDirectoryMap.keys()) {
