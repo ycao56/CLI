@@ -115,9 +115,7 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
     if (SUPPORTED_MIME.includes(mimeType)) {
       const fileStat = fs.statSync(filePath);
       localAssets.push({
-        id: Math.round(
-          fileStat.ctimeMs + fileStat.mtimeMs + fileStat.birthtimeMs
-        ).toString(),
+        id: `${path.basename(filePath)}-${fileStat.size}`.replace(/\s+/g, ''),
         filePath,
       });
     }
