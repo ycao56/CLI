@@ -282,7 +282,7 @@ async function startUpload(endpoint: string, accessToken: string, asset: any, de
     const res = await axios(config);
     return res;
   } catch (e) {
-    errorAssets.push({ file: asset.filePath, reason: e });
+    errorAssets.push({ file: asset.filePath, reason: e, response: e.response?.data});
     return null;
   }
 }
