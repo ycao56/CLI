@@ -14,6 +14,7 @@ import * as exifr from 'exifr';
 import * as mime from 'mime-types';
 import chalk from 'chalk';
 import pjson from '../package.json';
+import pLimit from "p-limit";
 
 const log = console.log;
 const rl = readline.createInterface({
@@ -71,11 +72,16 @@ program
       'IMMICH_DELETE_ASSETS'
     )
   )
+  .addOption(
+    new Option('-t, --threads', 'Amount of concurrent upload threads (default=5)').env(
+      'IMMICH_UPLOAD_THREADS'
+    )
+  )
   .action(upload);
 
 program.parse(process.argv);
 
-async function upload({ email, password, server, directory, yes: assumeYes, delete: deleteAssets }: any) {
+async function upload({ email, password, server, directory, yes: assumeYes, delete: deleteAssets, uploadThreads }: any) {
   const endpoint = server;
   const deviceId = (await si.uuid()).os || 'CLI';
   const osInfo = (await si.osInfo()).distro;
@@ -115,9 +121,7 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
     if (SUPPORTED_MIME.includes(mimeType)) {
       const fileStat = fs.statSync(filePath);
       localAssets.push({
-        id: Math.round(
-          fileStat.ctimeMs + fileStat.mtimeMs + fileStat.birthtimeMs
-        ).toString(),
+        id: `${path.basename(filePath)}-${fileStat.size}`.replace(/\s+/g, ''),
         filePath,
       });
     }
@@ -177,26 +181,33 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
       );
       progressBar.start(newAssets.length, 0);
 
+      const uploadQueue = [];
+
+      const limit = pLimit(uploadThreads ?? 5);
+
       for (const asset of newAssets) {
-        try {
-          const res = await startUpload(endpoint, accessToken, asset, deviceId);
+        uploadQueue.push(limit(async () => {
+          try {
+            const res = await startUpload(endpoint, accessToken, asset, deviceId);
 
-          if (res && res.status == 201) {
-            progressBar.increment();
-            if (deleteLocalAsset == 'y') {
-              fs.unlink(asset.filePath, (err) => {
-                if (err) {
-                  log(err)
-                  return
-                }
-              })
-
+            if (res && res.status == 201) {
+              progressBar.increment();
+              if (deleteLocalAsset == 'y') {
+                fs.unlink(asset.filePath, (err) => {
+                  if (err) {
+                    log(err)
+                    return
+                  }
+                })
+              }
             }
+          } catch (err) {
+            log(chalk.red(err.message));
           }
-        } catch (err) {
-          log(chalk.red(err.message));
-        }
+        }))
       }
+
+      const uploads = await Promise.all(uploadQueue)
 
       progressBar.stop();
 
