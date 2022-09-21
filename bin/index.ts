@@ -29,10 +29,20 @@ const SUPPORTED_MIME = [
   'image/heic',
   'image/jpeg',
   'image/png',
+  'image/jpg',
+  'image/gif',
+  'image/heic',
+  'image/heif',
+  'image/dng',
+  'image/x-adobe-dng',
+  'image/webp',
+  'image/tiff',
 
   // VIDEO
   'video/mp4',
   'video/quicktime',
+  'video/x-msvideo',
+  'video/3gpp'
 ];
 
 program
