@@ -1,19 +1,19 @@
 #! /usr/bin/env node
-import axios, { AxiosRequestConfig } from 'axios';
-import { program, Option } from 'commander';
-import * as fs from 'fs';
-import { fdir } from 'fdir';
-import * as si from 'systeminformation';
-import * as readline from 'readline';
-import * as path from 'path';
-import FormData from 'form-data';
-import * as cliProgress from 'cli-progress';
-import { stat } from 'fs/promises';
-import * as exifr from 'exifr';
+import axios, { AxiosRequestConfig } from "axios";
+import { program, Option } from "commander";
+import * as fs from "fs";
+import { fdir } from "fdir";
+import * as si from "systeminformation";
+import * as readline from "readline";
+import * as path from "path";
+import FormData from "form-data";
+import * as cliProgress from "cli-progress";
+import { stat } from "fs/promises";
+import * as exifr from "exifr";
 // GLOBAL
-import * as mime from 'mime-types';
-import chalk from 'chalk';
-import pjson from '../package.json';
+import * as mime from "mime-types";
+import chalk from "chalk";
+import pjson from "../package.json";
 import pLimit from "p-limit";
 
 const log = console.log;
@@ -25,89 +25,101 @@ let errorAssets: any[] = [];
 
 const SUPPORTED_MIME = [
   // IMAGES
-  'image/heif',
-  'image/heic',
-  'image/jpeg',
-  'image/png',
-  'image/jpg',
-  'image/gif',
-  'image/heic',
-  'image/heif',
-  'image/dng',
-  'image/x-adobe-dng',
-  'image/webp',
-  'image/tiff',
+  "image/heif",
+  "image/heic",
+  "image/jpeg",
+  "image/png",
+  "image/jpg",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+  "image/dng",
+  "image/x-adobe-dng",
+  "image/webp",
+  "image/tiff",
 
   // VIDEO
-  'video/mp4',
-  'video/quicktime',
-  'video/x-msvideo',
-  'video/3gpp'
+  "video/mp4",
+  "video/quicktime",
+  "video/x-msvideo",
+  "video/3gpp",
 ];
 
 program
-  .name('Immich CLI Utilities')
-  .description('Immich CLI Utilities toolset')
+  .name("Immich CLI Utilities")
+  .description("Immich CLI Utilities toolset")
   .version(pjson.version);
 
 program
-  .command('upload')
-  .description('Upload images and videos in a directory to Immich\'s server')
+  .command("upload")
+  .description("Upload images and videos in a directory to Immich's server")
   .addOption(
-    new Option('-e, --email <value>', 'User\'s Email').env('IMMICH_USER_EMAIL')
+    new Option("-e, --email <value>", "User's Email").env("IMMICH_USER_EMAIL")
   )
   .addOption(
-    new Option('-pw, --password <value>', 'User\'s Password').env(
-      'IMMICH_USER_PASSWORD'
+    new Option("-pw, --password <value>", "User's Password").env(
+      "IMMICH_USER_PASSWORD"
     )
   )
   .addOption(
     new Option(
-      '-s, --server <value>',
-      'Server address (http://<your-ip>:2283/api or https://<your-domain>/api)'
-    ).env('IMMICH_SERVER_ADDRESS')
+      "-s, --server <value>",
+      "Server address (http://<your-ip>:2283/api or https://<your-domain>/api)"
+    ).env("IMMICH_SERVER_ADDRESS")
   )
   .addOption(
-    new Option('-d, --directory <value>', 'Target Directory').env(
-      'IMMICH_TARGET_DIRECTORY'
+    new Option("-d, --directory <value>", "Target Directory").env(
+      "IMMICH_TARGET_DIRECTORY"
     )
   )
   .addOption(
-    new Option('-y, --yes', 'Assume yes on all interactive prompts').env(
-      'IMMICH_ASSUME_YES'
+    new Option("-y, --yes", "Assume yes on all interactive prompts").env(
+      "IMMICH_ASSUME_YES"
     )
   )
   .addOption(
-    new Option('-da, --delete', 'Delete local assets after upload').env(
-      'IMMICH_DELETE_ASSETS'
+    new Option("-da, --delete", "Delete local assets after upload").env(
+      "IMMICH_DELETE_ASSETS"
     )
   )
   .addOption(
-    new Option('-t, --threads', 'Amount of concurrent upload threads (default=5)').env(
-      'IMMICH_UPLOAD_THREADS'
-    )
+    new Option(
+      "-t, --threads",
+      "Amount of concurrent upload threads (default=5)"
+    ).env("IMMICH_UPLOAD_THREADS")
   )
   .addOption(
-    new Option('-al --album [album]', 'Create albums for assets based on the parent folder or a given name. Only adds new assets to the album(s)'
-    ).env('IMMICH_CREATE_ALBUMS')
+    new Option(
+      "-al, --album [album]",
+      "Create albums for assets based on the parent folder or a given name. Only adds new assets to the album(s)"
+    ).env("IMMICH_CREATE_ALBUMS")
   )
   .action(upload);
 
 program.parse(process.argv);
 
-async function upload({ email, password, server, directory, yes: assumeYes, delete: deleteAssets, uploadThreads, album: createAlbums }: any) {
+async function upload({
+  email,
+  password,
+  server,
+  directory,
+  yes: assumeYes,
+  delete: deleteAssets,
+  uploadThreads,
+  album: createAlbums,
+}: any) {
   const endpoint = server;
-  const deviceId = (await si.uuid()).os || 'CLI';
+  const deviceId = (await si.uuid()).os || "CLI";
   const osInfo = (await si.osInfo()).distro;
   const localAssets: any[] = [];
   const newAssets: any[] = [];
 
   // Ping server
-  log('[1] Pinging server...');
+  log("[1] Pinging server...");
   await pingServer(endpoint);
 
   // Login
-  log('[2] Logging in...');
+  log("[2] Logging in...");
   const { accessToken, userId, userEmail } = await login(
     endpoint,
     email,
@@ -116,37 +128,37 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
   log(chalk.yellow(`You are logged in as ${userEmail}`));
 
   // Check if directory exist
-  log('[3] Checking directory...');
+  log("[3] Checking directory...");
   if (fs.existsSync(directory)) {
-    log(chalk.green('Directory status: OK'));
+    log(chalk.green("Directory status: OK"));
   } else {
-    log(chalk.red('Error navigating to directory - check directory path'));
+    log(chalk.red("Error navigating to directory - check directory path"));
     process.exit(1);
   }
 
   // Index provided directory
-  log('[4] Indexing files...');
+  log("[4] Indexing files...");
   const api = new fdir().withFullPaths().crawl(directory);
 
-  const files = await api.withPromise() as any[];
+  const files = (await api.withPromise()) as any[];
 
   for (const filePath of files) {
     const mimeType = mime.lookup(filePath) as string;
     if (SUPPORTED_MIME.includes(mimeType)) {
       const fileStat = fs.statSync(filePath);
       localAssets.push({
-        id: `${path.basename(filePath)}-${fileStat.size}`.replace(/\s+/g, ''),
+        id: `${path.basename(filePath)}-${fileStat.size}`.replace(/\s+/g, ""),
         filePath,
       });
     }
   }
-  log(chalk.green('Indexing file: OK'));
+  log(chalk.green("Indexing file: OK"));
   log(
     chalk.yellow(`Found ${localAssets.length} assets in specified directory`)
   );
 
   // Find assets that has not been backup
-  log('[5] Gathering device\'s asset info from server...');
+  log("[5] Gathering device's asset info from server...");
 
   const backupAsset = await getAssetInfoFromServer(
     endpoint,
@@ -161,7 +173,7 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
   });
 
   if (newAssets.length == 0) {
-    log(chalk.green('All assets have been backup to the server'));
+    log(chalk.green("All assets have been backup to the server"));
     process.exit(0);
   } else {
     log(
@@ -176,19 +188,19 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
     //There is a promise API for readline, but it's currently experimental
     //https://nodejs.org/api/readline.html#promises-api
     const answer = assumeYes
-      ? 'y'
+      ? "y"
       : await new Promise((resolve) => {
-        rl.question('Do you want to start upload now? (y/n) ', resolve);
-      });
-    const deleteLocalAsset = deleteAssets ? 'y' : 'n';
+          rl.question("Do you want to start upload now? (y/n) ", resolve);
+        });
+    const deleteLocalAsset = deleteAssets ? "y" : "n";
 
-    if (answer == 'n') {
-      log(chalk.yellow('Abort Upload Process'));
+    if (answer == "n") {
+      log(chalk.yellow("Abort Upload Process"));
       process.exit(1);
     }
 
-    if (answer == 'y') {
-      log(chalk.green('Start uploading...'));
+    if (answer == "y") {
+      log(chalk.green("Start uploading..."));
       const progressBar = new cliProgress.SingleBar(
         {},
         cliProgress.Presets.shades_classic
@@ -206,26 +218,33 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
         if (!assetDirectoryMap.has(album)) {
           assetDirectoryMap.set(album, []);
         }
-        uploadQueue.push(limit(async () => {
-          try {
-            const res = await startUpload(endpoint, accessToken, asset, deviceId);
+        uploadQueue.push(
+          limit(async () => {
+            try {
+              const res = await startUpload(
+                endpoint,
+                accessToken,
+                asset,
+                deviceId
+              );
 
-            if (res && res.status == 201) {
-              progressBar.increment();
-              if (deleteLocalAsset == 'y') {
-                fs.unlink(asset.filePath, (err) => {
-                  if (err) {
-                    log(err)
-                    return
-                  }
-                })
+              if (res && res.status == 201) {
+                progressBar.increment();
+                if (deleteLocalAsset == "y") {
+                  fs.unlink(asset.filePath, (err) => {
+                    if (err) {
+                      log(err);
+                      return;
+                    }
+                  });
+                }
+                assetDirectoryMap.get(album)!.push(res!.data.id);
               }
-              assetDirectoryMap.get(album)!.push(res!.data.id);
+            } catch (err) {
+              log(chalk.red(err.message));
             }
-          } catch (err) {
-            log(chalk.red(err.message));
-          }
-        }))
+          })
+        );
       }
 
       const uploads = await Promise.all(uploadQueue);
@@ -233,15 +252,17 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
       progressBar.stop();
 
       if (createAlbums) {
-        log(chalk.green('Creating albums...'));
+        log(chalk.green("Creating albums..."));
 
         const serverAlbums = await getAlbumsFromServer(endpoint, accessToken);
 
-        if (typeof createAlbums === 'boolean') {
+        if (typeof createAlbums === "boolean") {
           progressBar.start(assetDirectoryMap.size, 0);
 
           for (const localAlbum of assetDirectoryMap.keys()) {
-            const serverAlbumIndex = serverAlbums.findIndex((album: any) => album.albumName === localAlbum);
+            const serverAlbumIndex = serverAlbums.findIndex(
+              (album: any) => album.albumName === localAlbum
+            );
             let albumId: string;
             if (serverAlbumIndex > -1) {
               albumId = serverAlbums[serverAlbumIndex].id;
@@ -249,8 +270,13 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
               albumId = await createAlbum(endpoint, accessToken, localAlbum);
             }
 
-            if(albumId) {
-              await addAssetsToAlbum(endpoint, accessToken, albumId, assetDirectoryMap.get(localAlbum)!);
+            if (albumId) {
+              await addAssetsToAlbum(
+                endpoint,
+                accessToken,
+                albumId,
+                assetDirectoryMap.get(localAlbum)!
+              );
             }
 
             progressBar.increment();
@@ -258,7 +284,9 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
 
           progressBar.stop();
         } else {
-          const serverAlbumIndex = serverAlbums.findIndex((album: any) => album.albumName === createAlbums);
+          const serverAlbumIndex = serverAlbums.findIndex(
+            (album: any) => album.albumName === createAlbums
+          );
           let albumId: string;
 
           if (serverAlbumIndex > -1) {
@@ -267,7 +295,12 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
             albumId = await createAlbum(endpoint, accessToken, createAlbums);
           }
 
-          await addAssetsToAlbum(endpoint, accessToken, albumId, Array.from(assetDirectoryMap.values()).flat());
+          await addAssetsToAlbum(
+            endpoint,
+            accessToken,
+            albumId,
+            Array.from(assetDirectoryMap.values()).flat()
+          );
         }
       }
 
@@ -283,18 +316,23 @@ async function upload({ email, password, server, directory, yes: assumeYes, dele
       process.exit(0);
     }
   } catch (e) {
-    log(chalk.red('Error reading input from user '), e);
+    log(chalk.red("Error reading input from user "), e);
     process.exit(1);
   }
 }
 
-async function startUpload(endpoint: string, accessToken: string, asset: any, deviceId: string) {
+async function startUpload(
+  endpoint: string,
+  accessToken: string,
+  asset: any,
+  deviceId: string
+) {
   try {
     const assetType = getAssetType(asset.filePath);
     const fileStat = await stat(asset.filePath);
 
     let exifData = null;
-    if (assetType != 'VIDEO') {
+    if (assetType != "VIDEO") {
       exifData = await exifr.parse(asset.filePath, {
         tiff: true,
         ifd0: true as any,
@@ -316,19 +354,19 @@ async function startUpload(endpoint: string, accessToken: string, asset: any, de
         : fileStat.mtime.toISOString();
 
     const data = new FormData();
-    data.append('deviceAssetId', asset.id);
-    data.append('deviceId', deviceId);
-    data.append('assetType', assetType);
-    data.append('createdAt', createdAt);
-    data.append('modifiedAt', fileStat.mtime.toISOString());
-    data.append('isFavorite', JSON.stringify(false));
-    data.append('fileExtension', path.extname(asset.filePath));
-    data.append('duration', '0:00:00.000000');
+    data.append("deviceAssetId", asset.id);
+    data.append("deviceId", deviceId);
+    data.append("assetType", assetType);
+    data.append("createdAt", createdAt);
+    data.append("modifiedAt", fileStat.mtime.toISOString());
+    data.append("isFavorite", JSON.stringify(false));
+    data.append("fileExtension", path.extname(asset.filePath));
+    data.append("duration", "0:00:00.000000");
 
-    data.append('assetData', fs.createReadStream(asset.filePath));
+    data.append("assetData", fs.createReadStream(asset.filePath));
 
     const config: AxiosRequestConfig<any> = {
-      method: 'post',
+      method: "post",
       url: `${endpoint}/asset/upload`,
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -342,7 +380,11 @@ async function startUpload(endpoint: string, accessToken: string, asset: any, de
     const res = await axios(config);
     return res;
   } catch (e) {
-    errorAssets.push({ file: asset.filePath, reason: e, response: e.response?.data});
+    errorAssets.push({
+      file: asset.filePath,
+      reason: e,
+      response: e.response?.data,
+    });
     return null;
   }
 }
@@ -350,44 +392,65 @@ async function startUpload(endpoint: string, accessToken: string, asset: any, de
 async function getAlbumsFromServer(endpoint: string, accessToken: string) {
   try {
     const res = await axios.get(`${endpoint}/album`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
     return res.data;
-  } catch(e) {
-    log(chalk.red('Error getting albums'), e);
+  } catch (e) {
+    log(chalk.red("Error getting albums"), e);
     process.exit(1);
   }
 }
 
-async function createAlbum(endpoint: string, accessToken: string, albumName: string) {
+async function createAlbum(
+  endpoint: string,
+  accessToken: string,
+  albumName: string
+) {
   try {
-    const res = await axios.post(`${endpoint}/album`, { albumName }, {
-      headers: { Authorization: `Bearer ${accessToken} `}
-    });
+    const res = await axios.post(
+      `${endpoint}/album`,
+      { albumName },
+      {
+        headers: { Authorization: `Bearer ${accessToken} ` },
+      }
+    );
     return res.data.id;
-  } catch(e) {
+  } catch (e) {
     log(chalk.red(`Error creating album '${albumName}'`), e);
   }
 }
 
-async function addAssetsToAlbum(endpoint: string, accessToken: string, albumId: string, assetIds: string[]) {
+async function addAssetsToAlbum(
+  endpoint: string,
+  accessToken: string,
+  albumId: string,
+  assetIds: string[]
+) {
   try {
-    await axios.put(`${endpoint}/album/${albumId}/assets`, { assetIds: [...new Set(assetIds)] }, {
-      headers: { Authorization: `Bearer ${accessToken} `}
-    });
-  } catch(e) {
-    log(chalk.red('Error adding asset to album'), e);
+    await axios.put(
+      `${endpoint}/album/${albumId}/assets`,
+      { assetIds: [...new Set(assetIds)] },
+      {
+        headers: { Authorization: `Bearer ${accessToken} ` },
+      }
+    );
+  } catch (e) {
+    log(chalk.red("Error adding asset to album"), e);
   }
 }
 
-async function getAssetInfoFromServer(endpoint: string, accessToken: string, deviceId: string) {
+async function getAssetInfoFromServer(
+  endpoint: string,
+  accessToken: string,
+  deviceId: string
+) {
   try {
     const res = await axios.get(`${endpoint}/asset/${deviceId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     return res.data;
   } catch (e) {
-    log(chalk.red('Error getting device\'s uploaded assets'));
+    log(chalk.red("Error getting device's uploaded assets"));
     process.exit(1);
   }
 }
@@ -395,12 +458,12 @@ async function getAssetInfoFromServer(endpoint: string, accessToken: string, dev
 async function pingServer(endpoint: string) {
   try {
     const res = await axios.get(`${endpoint}/server-info/ping`);
-    if (res.data['res'] == 'pong') {
-      log(chalk.green('Server status: OK'));
+    if (res.data["res"] == "pong") {
+      log(chalk.green("Server status: OK"));
     }
   } catch (e) {
     log(
-      chalk.red('Error connecting to server - check server address and port')
+      chalk.red("Error connecting to server - check server address and port")
     );
     process.exit(1);
   }
@@ -414,11 +477,11 @@ async function login(endpoint: string, email: string, password: string) {
     });
 
     if (res.status == 201) {
-      log(chalk.green('Login status: OK'));
+      log(chalk.green("Login status: OK"));
       return res.data;
     }
   } catch (e) {
-    log(chalk.red('Error logging in - check email and password'));
+    log(chalk.red("Error logging in - check email and password"));
     process.exit(1);
   }
 }
@@ -426,7 +489,7 @@ async function login(endpoint: string, email: string, password: string) {
 function getAssetType(filePath: string) {
   const mimeType = mime.lookup(filePath) as string;
 
-  return mimeType.split('/')[0].toUpperCase();
+  return mimeType.split("/")[0].toUpperCase();
 }
 
 // node bin/index.js upload --email testuser@email.com --password password --server http://192.168.1.216:2283/api -d /Users/alex/Documents/immich-cli-upload-test-location
