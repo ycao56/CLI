@@ -13,13 +13,22 @@ CLI utilities to help with some operations with the Immich app
 - heif
 - heic
 - jpeg
-- gif
 - png
+- jpg
+- gif
+- heic
+- heif
+- dng
+- x-adobe-dng
+- webp
+- tiff
 
 ### Video
 
 - mp4
 - quicktime
+- x-msvideo
+- 3gpp
 
 # Getting Started
 
@@ -43,21 +52,29 @@ immich upload --email testuser@email.com --password password --server http://192
 
 ### Parameters
 
-| Parameter        | Description                           |
-|------------------|---------------------------------------|
-| --yes / -y       | Assume yes on all interactive prompts |
-| --delete   / -da | Delete local assets after upload      |
+| Parameter        | Description                                                         |
+| ---------------- | ------------------------------------------------------------------- |
+| --yes / -y       | Assume yes on all interactive prompts                               |
+| --delete / -da   | Delete local assets after upload                                    |
+| --email / -e     | User's email                                                        |
+| --password / -pw | User's password                                                     |
+| --server / -s    | Immich's server address                                             |
+| --directory / -d | Directory to upload from                                            |
+| --threads / -t   | Number of threads to use (Default 5)                                |
+| --album/ -al     | Create albums for assets based on the parent folder or a given name |
 
 ### Run via Docker
 
 Be aware that as this runs inside a container, it mounts your current directory as a volume and for the -d flag you need to use the path inside the container.
+
 ```
 docker run -it --rm -v $(pwd):/import ghcr.io/immich-app/immich-cli:latest upload --email testuser@email.com --password password --server http://192.168.1.216:2283/api -d /import
 ```
 
 Optionally, you can create an alias:
+
 ```
-alias immich="docker run -it --rm -v $(pwd):/import ghcr.io/immich-app/immich-cli:latest"  
+alias immich="docker run -it --rm -v $(pwd):/import ghcr.io/immich-app/immich-cli:latest"
 immich upload --email testuser@email.com --password password --server http://192.168.1.216:2283/api -d /import
 ```
 
@@ -77,6 +94,11 @@ npm install
 
 3 - Run
 
+```
+npm run build
+```
+
+4 - Run
 ```
 node bin/index.js upload --email testuser@email.com --password password --server http://192.168.1.216:2283/api -d your/target/directory
 ```
