@@ -99,6 +99,7 @@ npm run build
 ```
 
 4 - Run
+
 ```
 node bin/index.js upload --email testuser@email.com --password password --server http://192.168.1.216:2283/api -d your/target/directory
 ```
