@@ -22,6 +22,7 @@ CLI utilities to help with some operations with the Immich app
 - x-adobe-dng
 - webp
 - tiff
+- nef
 
 ### Video
 

@@ -37,6 +37,7 @@ const SUPPORTED_MIME = [
   "image/x-adobe-dng",
   "image/webp",
   "image/tiff",
+  "image/nef",
 
   // VIDEO
   "video/mp4",
