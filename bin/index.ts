@@ -368,6 +368,7 @@ async function startUpload(
 
     const config: AxiosRequestConfig<any> = {
       method: "post",
+      maxRedirects: 0,
       url: `${endpoint}/asset/upload`,
       headers: {
         Authorization: `Bearer ${accessToken}`,
