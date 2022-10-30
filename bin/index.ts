@@ -203,10 +203,13 @@ async function upload({
     if (answer == "y") {
       log(chalk.green("Start uploading..."));
       const progressBar = new cliProgress.SingleBar(
-        {},
+        {
+          format:
+            "Upload Progress | {bar} | {percentage}% || {value}/{total} || Current file [{filepath}]",
+        },
         cliProgress.Presets.shades_classic
       );
-      progressBar.start(newAssets.length, 0);
+      progressBar.start(newAssets.length, 0, { filepath: "" });
 
       const assetDirectoryMap: Map<string, string[]> = new Map();
 
@@ -228,9 +231,8 @@ async function upload({
                 asset,
                 deviceId
               );
-
+              progressBar.increment(1, { filepath: asset.filePath });
               if (res && res.status == 201) {
-                progressBar.increment();
                 if (deleteLocalAsset == "y") {
                   fs.unlink(asset.filePath, (err) => {
                     if (err) {
@@ -494,5 +496,5 @@ function getAssetType(filePath: string) {
   return mimeType.split("/")[0].toUpperCase();
 }
 
-// node bin/index.js upload --email testuser@email.com --password password --server http://192.168.1.216:2283/api -d /Users/alex/Documents/immich-cli-upload-test-location
+// node bin/index.js upload --email testuser@email.com --password password --server http://10.1.15.216:2283/api -d /Users/alex/Documents/immich-cli-upload-test-location
 // node bin/index.js upload --help
