@@ -69,13 +69,13 @@ immich upload --email testuser@email.com --password password --server http://192
 Be aware that as this runs inside a container, it mounts your current directory as a volume and for the -d flag you need to use the path inside the container.
 
 ```
-docker run -it --rm -v $(pwd):/import ghcr.io/immich-app/immich-cli:latest upload --email testuser@email.com --password password --server http://192.168.1.216:2283/api -d /import
+docker run -it --rm -v "$(pwd)":/import ghcr.io/immich-app/immich-cli:latest upload --email testuser@email.com --password password --server http://192.168.1.216:2283/api -d /import
 ```
 
 Optionally, you can create an alias:
 
 ```
-alias immich="docker run -it --rm -v $(pwd):/import ghcr.io/immich-app/immich-cli:latest"
+alias immich="docker run -it --rm -v '$(pwd)':/import ghcr.io/immich-app/immich-cli:latest"
 immich upload --email testuser@email.com --password password --server http://192.168.1.216:2283/api -d /import
 ```
 
