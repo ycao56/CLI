@@ -4,3 +4,5 @@ node_modules/
 # output
 bin/**/*.js
 bin/**/*.d.ts
+
+test/

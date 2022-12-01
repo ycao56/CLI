@@ -336,19 +336,21 @@ async function startUpload(
 
     let exifData = null;
     if (assetType != "VIDEO") {
-      exifData = await exifr.parse(asset.filePath, {
-        tiff: true,
-        ifd0: true as any,
-        ifd1: true,
-        exif: true,
-        gps: true,
-        interop: true,
-        xmp: true,
-        icc: true,
-        iptc: true,
-        jfif: true,
-        ihdr: true,
-      });
+      try {
+        exifData = await exifr.parse(asset.filePath, {
+          tiff: true,
+          ifd0: true as any,
+          ifd1: true,
+          exif: true,
+          gps: true,
+          interop: true,
+          xmp: true,
+          icc: true,
+          iptc: true,
+          jfif: true,
+          ihdr: true,
+        });
+      } catch (e) {}
     }
 
     const createdAt =
