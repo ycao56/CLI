@@ -38,7 +38,7 @@ const SUPPORTED_MIME = [
   "image/webp",
   "image/tiff",
   "image/nef",
-  "iamge/x-nikon-nef",
+  "image/x-nikon-nef",
 
   // VIDEO
   "video/mp4",
