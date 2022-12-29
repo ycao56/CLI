@@ -114,7 +114,6 @@ async function upload({
   const deviceId = (await si.uuid()).os || "CLI";
   const osInfo = (await si.osInfo()).distro;
   const localAssets: any[] = [];
-  const newAssets: any[] = [];
 
   // Ping server
   log("[1] Pinging server...");
@@ -168,19 +167,13 @@ async function upload({
     deviceId
   );
 
-  localAssets.forEach((localAsset) => {
-    if (!backupAsset.includes(localAsset.id)) {
-      newAssets.push(localAsset);
-    }
-  });
-
-  if (newAssets.length == 0) {
-    log(chalk.green("All assets have been backup to the server"));
+  if (localAssets.length == 0) {
+    log(chalk.green("There are no assets to backup"));
     process.exit(0);
   } else {
     log(
       chalk.green(
-        `A total of ${newAssets.length} assets will be uploaded to the server`
+        `A total of ${localAssets.length} assets will be uploaded to the server`
       )
     );
   }
@@ -210,7 +203,7 @@ async function upload({
         },
         cliProgress.Presets.shades_classic
       );
-      progressBar.start(newAssets.length, 0, { filepath: "" });
+      progressBar.start(localAssets.length, 0, { filepath: "" });
 
       const assetDirectoryMap: Map<string, string[]> = new Map();
 
@@ -245,6 +238,7 @@ async function upload({
                       }
                     });
                   }
+                  backupAsset.push(asset.id);
                   assetDirectoryMap.get(album)!.push(res!.data.id);
                 }
               } catch (err) {
@@ -252,30 +246,28 @@ async function upload({
               }
             })
           );
-        } else {
+        } else if (createAlbums) {
           // Existing file. No need to upload it BUT lets still add to Album.
-          if (createAlbums) {
-            uploadQueue.push(
-              limit(async () => {
-                try {
-                  // Fetch existing asset from server
-                  const res = await axios.post(
-                    `${endpoint}/asset/check`,
-                    {
-                      deviceAssetId: asset.id,
-                      deviceId,
-                    },
-                    {
-                      headers: { Authorization: `Bearer ${accessToken} ` },
-                    }
-                  );
-                  assetDirectoryMap.get(album)!.push(res!.data.id);
-                } catch (err) {
-                  log(chalk.red(err.message));
-                }
-              })
-            )
-          }
+          uploadQueue.push(
+            limit(async () => {
+              try {
+                // Fetch existing asset from server
+                const res = await axios.post(
+                  `${endpoint}/asset/check`,
+                  {
+                    deviceAssetId: asset.id,
+                    deviceId,
+                  },
+                  {
+                    headers: { Authorization: `Bearer ${accessToken} ` },
+                  }
+                );
+                assetDirectoryMap.get(album)!.push(res!.data.id);
+              } catch (err) {
+                log(chalk.red(err.message));
+              }
+            })
+          );
         }
       }
 
