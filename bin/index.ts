@@ -93,7 +93,7 @@ program
   .addOption(
     new Option(
       "-al, --album [album]",
-      "Create albums for assets based on the parent folder or a given name. Only adds new assets to the album(s)"
+      "Create albums for assets based on the parent folder or a given name"
     ).env("IMMICH_CREATE_ALBUMS")
   )
   .action(upload);
