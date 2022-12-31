@@ -229,7 +229,7 @@ async function upload({
                   deviceId,
                 );
                 progressBar.increment(1, { filepath: asset.filePath });
-                if (res && res.status == 201) {
+                if (res && (res.status == 201 || res.status == 200)) {
                   if (deleteLocalAsset == "y") {
                     fs.unlink(asset.filePath, (err) => {
                       if (err) {
