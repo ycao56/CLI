@@ -167,15 +167,23 @@ async function upload({
     deviceId
   );
 
-  if (localAssets.length == 0) {
+  const newAssets = localAssets.filter(a => !backupAsset.includes(a.id));
+  if (localAssets.length == 0 || (newAssets.length == 0 && !createAlbums)) {
     log(chalk.green("There are no assets to backup"));
     process.exit(0);
   } else {
     log(
       chalk.green(
-        `A total of ${localAssets.length} assets will be uploaded to the server`
+        `A total of ${newAssets.length} assets will be uploaded to the server`
       )
     );
+  }
+
+  if (createAlbums) {
+    log(chalk.green(
+      `A total of ${localAssets.length} assets will be added to album(s).\n` +
+      "NOTE: some assets may already be associated with the album, this will not create duplicates."
+    ));
   }
 
   // Ask user
