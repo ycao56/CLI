@@ -56,12 +56,7 @@ program
   .command("upload")
   .description("Upload images and videos in a directory to Immich's server")
   .addOption(
-    new Option("-e, --email <value>", "User's Email").env("IMMICH_USER_EMAIL")
-  )
-  .addOption(
-    new Option("-pw, --password <value>", "User's Password").env(
-      "IMMICH_USER_PASSWORD"
-    )
+    new Option("-k, --key <value>", "API Key").env("IMMICH_API_KEY")
   )
   .addOption(
     new Option(
@@ -101,8 +96,7 @@ program
 program.parse(process.argv);
 
 async function upload({
-  email,
-  password,
+  key,
   server,
   directory,
   yes: assumeYes,
@@ -122,12 +116,8 @@ async function upload({
 
   // Login
   log("[2] Logging in...");
-  const { accessToken, userId, userEmail } = await login(
-    endpoint,
-    email,
-    password
-  );
-  log(chalk.yellow(`You are logged in as ${userEmail}`));
+  const user = await validateConnection(endpoint, key);
+  log(chalk.yellow(`Connected to Immich with user ${user.email}`));
 
   // Check if directory exist
   log("[3] Checking directory...");
@@ -164,7 +154,7 @@ async function upload({
 
   const backupAsset = await getAssetInfoFromServer(
     endpoint,
-    accessToken,
+    key,
     deviceId
   );
 
@@ -175,7 +165,7 @@ async function upload({
   });
 
   if (newAssets.length == 0) {
-    log(chalk.green("All assets have been backup to the server"));
+    log(chalk.green("All assets have been backed up to the server"));
     process.exit(0);
   } else {
     log(
@@ -192,8 +182,8 @@ async function upload({
     const answer = assumeYes
       ? "y"
       : await new Promise((resolve) => {
-          rl.question("Do you want to start upload now? (y/n) ", resolve);
-        });
+        rl.question("Do you want to start upload now? (y/n) ", resolve);
+      });
     const deleteLocalAsset = deleteAssets ? "y" : "n";
 
     if (answer == "n") {
@@ -228,7 +218,7 @@ async function upload({
             try {
               const res = await startUpload(
                 endpoint,
-                accessToken,
+                key,
                 asset,
                 deviceId
               );
@@ -258,7 +248,7 @@ async function upload({
       if (createAlbums) {
         log(chalk.green("Creating albums..."));
 
-        const serverAlbums = await getAlbumsFromServer(endpoint, accessToken);
+        const serverAlbums = await getAlbumsFromServer(endpoint, key);
 
         if (typeof createAlbums === "boolean") {
           progressBar.start(assetDirectoryMap.size, 0);
@@ -271,13 +261,13 @@ async function upload({
             if (serverAlbumIndex > -1) {
               albumId = serverAlbums[serverAlbumIndex].id;
             } else {
-              albumId = await createAlbum(endpoint, accessToken, localAlbum);
+              albumId = await createAlbum(endpoint, key, localAlbum);
             }
 
             if (albumId) {
               await addAssetsToAlbum(
                 endpoint,
-                accessToken,
+                key,
                 albumId,
                 assetDirectoryMap.get(localAlbum)!
               );
@@ -296,12 +286,12 @@ async function upload({
           if (serverAlbumIndex > -1) {
             albumId = serverAlbums[serverAlbumIndex].id;
           } else {
-            albumId = await createAlbum(endpoint, accessToken, createAlbums);
+            albumId = await createAlbum(endpoint, key, createAlbums);
           }
 
           await addAssetsToAlbum(
             endpoint,
-            accessToken,
+            key,
             albumId,
             Array.from(assetDirectoryMap.values()).flat()
           );
@@ -327,7 +317,7 @@ async function upload({
 
 async function startUpload(
   endpoint: string,
-  accessToken: string,
+  key: string,
   asset: any,
   deviceId: string
 ) {
@@ -351,7 +341,7 @@ async function startUpload(
           jfif: true,
           ihdr: true,
         });
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const createdAt =
@@ -376,7 +366,7 @@ async function startUpload(
       maxRedirects: 0,
       url: `${endpoint}/asset/upload`,
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        "x-api-key": key,
         ...data.getHeaders(),
       },
       maxContentLength: Infinity,
@@ -396,10 +386,10 @@ async function startUpload(
   }
 }
 
-async function getAlbumsFromServer(endpoint: string, accessToken: string) {
+async function getAlbumsFromServer(endpoint: string, key: string) {
   try {
     const res = await axios.get(`${endpoint}/album`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { "x-api-key": key },
     });
     return res.data;
   } catch (e) {
@@ -410,7 +400,7 @@ async function getAlbumsFromServer(endpoint: string, accessToken: string) {
 
 async function createAlbum(
   endpoint: string,
-  accessToken: string,
+  key: string,
   albumName: string
 ) {
   try {
@@ -418,7 +408,7 @@ async function createAlbum(
       `${endpoint}/album`,
       { albumName },
       {
-        headers: { Authorization: `Bearer ${accessToken} ` },
+        headers: { "x-api-key": key },
       }
     );
     return res.data.id;
@@ -429,7 +419,7 @@ async function createAlbum(
 
 async function addAssetsToAlbum(
   endpoint: string,
-  accessToken: string,
+  key: string,
   albumId: string,
   assetIds: string[]
 ) {
@@ -438,7 +428,7 @@ async function addAssetsToAlbum(
       `${endpoint}/album/${albumId}/assets`,
       { assetIds: [...new Set(assetIds)] },
       {
-        headers: { Authorization: `Bearer ${accessToken} ` },
+        headers: { "x-api-key": key },
       }
     );
   } catch (e) {
@@ -448,12 +438,12 @@ async function addAssetsToAlbum(
 
 async function getAssetInfoFromServer(
   endpoint: string,
-  accessToken: string,
+  key: string,
   deviceId: string
 ) {
   try {
     const res = await axios.get(`${endpoint}/asset/${deviceId}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { "x-api-key": key },
     });
     return res.data;
   } catch (e) {
@@ -476,19 +466,18 @@ async function pingServer(endpoint: string) {
   }
 }
 
-async function login(endpoint: string, email: string, password: string) {
+async function validateConnection(endpoint: string, key: string) {
   try {
-    const res = await axios.post(`${endpoint}/auth/login`, {
-      email,
-      password,
-    });
+    const res = await axios.get(`${endpoint}/user/me`, {
+      headers: { "x-api-key": key },
+    })
 
-    if (res.status == 201) {
+    if (res.status == 200) {
       log(chalk.green("Login status: OK"));
       return res.data;
     }
   } catch (e) {
-    log(chalk.red("Error logging in - check email and password"));
+    log(chalk.red("Error logging in - check api key"));
     process.exit(1);
   }
 }
