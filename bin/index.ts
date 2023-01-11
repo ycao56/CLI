@@ -257,7 +257,7 @@ async function upload({
                     deviceId,
                   },
                   {
-                    headers: { Authorization: `Bearer ${accessToken} ` },
+                    headers: { "x-api-key": key },
                   }
                 );
                 assetDirectoryMap.get(album)!.push(res!.data.id);
