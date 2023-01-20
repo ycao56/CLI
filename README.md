@@ -27,6 +27,7 @@ CLI utilities to help with some operations with the Immich app
 ### Video
 
 - mp4
+- webm
 - quicktime
 - x-msvideo
 - 3gpp

@@ -42,6 +42,7 @@ const SUPPORTED_MIME = [
 
   // VIDEO
   "video/mp4",
+  "video/webm",
   "video/quicktime",
   "video/x-msvideo",
   "video/3gpp",
