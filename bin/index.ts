@@ -89,7 +89,7 @@ program
   .addOption(
     new Option(
       "-al, --album [album]",
-      "Create albums for assets based on the parent folder or a given name. Only adds new assets to the album(s)"
+      "Create albums for assets based on the parent folder or a given name"
     ).env("IMMICH_CREATE_ALBUMS")
   )
   .action(upload);
@@ -109,7 +109,6 @@ async function upload({
   const deviceId = (await si.uuid()).os || "CLI";
   const osInfo = (await si.osInfo()).distro;
   const localAssets: any[] = [];
-  const newAssets: any[] = [];
 
   // Ping server
   log("[1] Pinging server...");
@@ -159,13 +158,8 @@ async function upload({
     deviceId
   );
 
-  localAssets.forEach((localAsset) => {
-    if (!backupAsset.includes(localAsset.id)) {
-      newAssets.push(localAsset);
-    }
-  });
-
-  if (newAssets.length == 0) {
+  const newAssets = localAssets.filter(a => !backupAsset.includes(a.id));
+  if (localAssets.length == 0 || (newAssets.length == 0 && !createAlbums)) {
     log(chalk.green("All assets have been backed up to the server"));
     process.exit(0);
   } else {
@@ -174,6 +168,13 @@ async function upload({
         `A total of ${newAssets.length} assets will be uploaded to the server`
       )
     );
+  }
+
+  if (createAlbums) {
+    log(chalk.green(
+      `A total of ${localAssets.length} assets will be added to album(s).\n` +
+      "NOTE: some assets may already be associated with the album, this will not create duplicates."
+    ));
   }
 
   // Ask user
@@ -201,7 +202,7 @@ async function upload({
         },
         cliProgress.Presets.shades_classic
       );
-      progressBar.start(newAssets.length, 0, { filepath: "" });
+      progressBar.start(localAssets.length, 0, { filepath: "" });
 
       const assetDirectoryMap: Map<string, string[]> = new Map();
 
@@ -209,37 +210,64 @@ async function upload({
 
       const limit = pLimit(uploadThreads ?? 5);
 
-      for (const asset of newAssets) {
+      for (const asset of localAssets) {
         const album = asset.filePath.split(path.sep).slice(-2)[0];
         if (!assetDirectoryMap.has(album)) {
           assetDirectoryMap.set(album, []);
         }
-        uploadQueue.push(
-          limit(async () => {
-            try {
-              const res = await startUpload(
-                endpoint,
-                key,
-                asset,
-                deviceId
-              );
-              progressBar.increment(1, { filepath: asset.filePath });
-              if (res && res.status == 201) {
-                if (deleteLocalAsset == "y") {
-                  fs.unlink(asset.filePath, (err) => {
-                    if (err) {
-                      log(err);
-                      return;
-                    }
-                  });
+
+        if (!backupAsset.includes(asset.id)) {
+          // New file, lets upload it!
+          uploadQueue.push(
+            limit(async () => {
+              try {
+                const res = await startUpload(
+                  endpoint,
+                  key,
+                  asset,
+                  deviceId,
+                );
+                progressBar.increment(1, { filepath: asset.filePath });
+                if (res && (res.status == 201 || res.status == 200)) {
+                  if (deleteLocalAsset == "y") {
+                    fs.unlink(asset.filePath, (err) => {
+                      if (err) {
+                        log(err);
+                        return;
+                      }
+                    });
+                  }
+                  backupAsset.push(asset.id);
+                  assetDirectoryMap.get(album)!.push(res!.data.id);
                 }
-                assetDirectoryMap.get(album)!.push(res!.data.id);
+              } catch (err) {
+                log(chalk.red(err.message));
               }
-            } catch (err) {
-              log(chalk.red(err.message));
-            }
-          })
-        );
+            })
+          );
+        } else if (createAlbums) {
+          // Existing file. No need to upload it BUT lets still add to Album.
+          uploadQueue.push(
+            limit(async () => {
+              try {
+                // Fetch existing asset from server
+                const res = await axios.post(
+                  `${endpoint}/asset/check`,
+                  {
+                    deviceAssetId: asset.id,
+                    deviceId,
+                  },
+                  {
+                    headers: { "x-api-key": key },
+                  }
+                );
+                assetDirectoryMap.get(album)!.push(res!.data.id);
+              } catch (err) {
+                log(chalk.red(err.message));
+              }
+            })
+          );
+        }
       }
 
       const uploads = await Promise.all(uploadQueue);
