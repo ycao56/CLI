@@ -66,17 +66,18 @@ immich upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api -d your
 
 ### Run via Docker
 
-Be aware that as this runs inside a container, it mounts your current directory as a volume and for the -d flag you need to use the path inside the container.
+Be aware that as this runs inside a container, you need to mount the folder from which you want to import into 
+the container. The below command uses `$(pwd)` to mount the folder you are currently in.
 
 ```
-docker run -it --rm -v "$(pwd)":/import ghcr.io/immich-app/immich-cli:latest upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api -d /import
+docker run -it --rm -v "$(pwd)":/import ghcr.io/immich-app/immich-cli:latest upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api
 ```
 
 Optionally, you can create an alias:
 
 ```
 alias immich="docker run -it --rm -v '$(pwd)':/import ghcr.io/immich-app/immich-cli:latest"
-immich upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api -d /import
+immich upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api
 ```
 
 ### Install from source
