@@ -92,6 +92,12 @@ program
       "Create albums for assets based on the parent folder or a given name"
     ).env("IMMICH_CREATE_ALBUMS")
   )
+  .addOption(
+    new Option(
+      "-id, --device-uuid <value>",
+      "Set a device UUID"
+    ).env("IMMICH_DEVICE_UUID")
+  )
   .action(upload);
 
 program.parse(process.argv);
@@ -104,9 +110,10 @@ async function upload({
   delete: deleteAssets,
   uploadThreads,
   album: createAlbums,
+  deviceUuid: deviceUuid
 }: any) {
   const endpoint = server;
-  const deviceId = (await si.uuid()).os || "CLI";
+  const deviceId = deviceUuid || (await si.uuid()).os || "CLI";
   const osInfo = (await si.osInfo()).distro;
   const localAssets: any[] = [];
 
