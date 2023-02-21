@@ -389,8 +389,8 @@ async function startUpload(
     data.append("deviceAssetId", asset.id);
     data.append("deviceId", deviceId);
     data.append("assetType", assetType);
-    data.append("createdAt", createdAt);
-    data.append("modifiedAt", fileStat.mtime.toISOString());
+    data.append("fileCreatedAt", createdAt);
+    data.append("fileModifiedAt", fileStat.mtime.toISOString());
     data.append("isFavorite", JSON.stringify(false));
     data.append("fileExtension", path.extname(asset.filePath));
     data.append("duration", "0:00:00.000000");
