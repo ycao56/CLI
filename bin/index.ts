@@ -370,10 +370,10 @@ async function startUpload(
       if (!exifDate) return null;
 
       if (typeof exifDate === 'string') {
-        return new Date(exifDate);
+        return new Date(exifDate).toISOString();
       }
 
-      return exifDate.toDate();
+      return exifDate.toDate().toISOString();
     };
 
     const fileCreatedAt = exifToDate(exifData?.DateTimeOriginal ?? exifData?.CreateDate ?? asset.fileCreatedAt);
