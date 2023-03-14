@@ -22,6 +22,7 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 let errorAssets: any[] = [];
+let successAssets: any[] = [];
 
 const SUPPORTED_MIME_TYPES = [
   // IMAGES
@@ -71,6 +72,11 @@ program
     ).default(false)
   )
   .addOption(
+    new Option("-v, --verbose", "Show verbose output").env(
+      "IMMICH_VERBOSE"
+    ).default(false)
+  )
+  .addOption(
     new Option("-y, --yes", "Assume yes on all interactive prompts").env(
       "IMMICH_ASSUME_YES"
     )
@@ -111,27 +117,29 @@ async function upload(paths: String,{
   key,
   server,
   recursive,
+  verbose,
   yes: assumeYes,
   delete: deleteAssets,
   uploadThreads,
   album: createAlbums,
   deviceUuid: deviceUuid
 }: any) {
-  const endpoint = server;
+  const instanceAddress = server;
   const deviceId = deviceUuid || (await si.uuid()).os || "CLI";
   const localAssets: any[] = [];
 
   // Ping server
-  log("[1] Pinging server...");
-  await pingServer(endpoint);
+  log("Checking connectivity with Immich instance...");
+  await pingServer(instanceAddress);
 
   // Login
-  log("[2] Logging in...");
-  const user = await validateConnection(endpoint, key);
-  log(chalk.yellow(`Connected to Immich with user ${user.email}`));
+  log("Checking credentials...");
+  const user = await validateConnection(instanceAddress, key);
+  log(chalk.green(`Successful authentication for user ${user.email}`));
 
   // Index provided directory
-  log("[4] Indexing files...");
+  log("Indexing local assets...");
+
   let crawler = new fdir().withFullPaths();
 
   if (!recursive)
@@ -143,19 +151,25 @@ async function upload(paths: String,{
   let files: any[] = [];
 
   for (const newPath of paths) {    
-    // Will throw error if path does not exist
-    await fs.promises.access(newPath);
+    try {
+      // Check if the path can be accessed
+      await fs.promises.access(newPath);
+    } catch (e) {
+      log(chalk.red(e));
+      process.exit(1);
+    }
  
-    if (await isDirectory(newPath)) 
+    const stats = await fs.promises.lstat(newPath);
+
+    if (stats.isDirectory()) 
     {
-      // Is a directory so use the crawler to crawl it
+      // Path is a directory so use the crawler to crawl it
       const api = crawler.crawl(newPath);
       files=files.concat((await api.withPromise()));
-
     } else {
+      // Path is a single file
       files.push(path.resolve(newPath));
     }
-
   }
 
   const uniqueFiles = new Set(files);
@@ -170,35 +184,36 @@ async function upload(paths: String,{
       });
     }
   }
-  log(chalk.green("Indexing file: OK"));
-  log(
-    chalk.yellow(`Found ${localAssets.length} assets in specified directory`)
-  );
+  if (localAssets.length == 0) {
+    log("No local assets found, exiting");
+    process.exit(0);
+  }
 
-  // Find assets that has not been backup
-  log("[5] Gathering device's asset info from server...");
+  log(`Indexing complete, found ${localAssets.length} local assets`);
 
-  const backupAsset = await getAssetInfoFromServer(
-    endpoint,
+  log("Comparing local assets with those on the Immich instance...");
+
+  const assetsInInstance = await getAssetInfoFromServer(
+    instanceAddress,
     key,
     deviceId
   );
 
-  const newAssets = localAssets.filter(a => !backupAsset.includes(a.id));
+  const newAssets = localAssets.filter(a => !assetsInInstance.includes(a.id));
   if (localAssets.length == 0 || (newAssets.length == 0 && !createAlbums)) {
     log(chalk.green("All assets have been backed up to the server"));
     process.exit(0);
   } else {
     log(
       chalk.green(
-        `A total of ${newAssets.length} assets will be uploaded to the server`
+        `${newAssets.length} assets to upload`
       )
     );
   }
 
   if (createAlbums) {
     log(chalk.green(
-      `A total of ${localAssets.length} assets will be added to album(s).\n` +
+      `${localAssets.length} assets will be added to album(s).\n` +
       "NOTE: some assets may already be associated with the album, this will not create duplicates."
     ));
   }
@@ -214,8 +229,8 @@ async function upload(paths: String,{
       });
     const deleteLocalAsset = deleteAssets ? "y" : "n";
 
-    if (answer == "n") {
-      log(chalk.yellow("Abort Upload Process"));
+    if (answer != "y") {
+      log(chalk.yellow("Upload aborted"));
       process.exit(1);
     }
 
@@ -242,13 +257,13 @@ async function upload(paths: String,{
           assetDirectoryMap.set(album, []);
         }
 
-        if (!backupAsset.includes(asset.id)) {
+        if (!assetsInInstance.includes(asset.id)) {
           // New file, lets upload it!
           uploadQueue.push(
             limit(async () => {
               try {
                 const res = await startUpload(
-                  endpoint,
+                  instanceAddress,
                   key,
                   asset,
                   deviceId,
@@ -263,7 +278,7 @@ async function upload(paths: String,{
                       }
                     });
                   }
-                  backupAsset.push(asset.id);
+                  assetsInInstance.push(asset.id);
                   assetDirectoryMap.get(album)!.push(res!.data.id);
                 }
               } catch (err) {
@@ -278,7 +293,7 @@ async function upload(paths: String,{
               try {
                 // Fetch existing asset from server
                 const res = await axios.post(
-                  `${endpoint}/asset/check`,
+                  `${instanceAddress}/asset/check`,
                   {
                     deviceAssetId: asset.id,
                     deviceId,
@@ -297,13 +312,13 @@ async function upload(paths: String,{
       }
 
       const uploads = await Promise.all(uploadQueue);
-
+      
       progressBar.stop();
 
       if (createAlbums) {
         log(chalk.green("Creating albums..."));
 
-        const serverAlbums = await getAlbumsFromServer(endpoint, key);
+        const serverAlbums = await getAlbumsFromServer(instanceAddress, key);
 
         if (typeof createAlbums === "boolean") {
           progressBar.start(assetDirectoryMap.size, 0);
@@ -316,12 +331,12 @@ async function upload(paths: String,{
             if (serverAlbumIndex > -1) {
               albumId = serverAlbums[serverAlbumIndex].id;
             } else {
-              albumId = await createAlbum(endpoint, key, localAlbum);
+              albumId = await createAlbum(instanceAddress, key, localAlbum);
             }
 
             if (albumId) {
               await addAssetsToAlbum(
-                endpoint,
+                instanceAddress,
                 key,
                 albumId,
                 assetDirectoryMap.get(localAlbum)!
@@ -341,11 +356,11 @@ async function upload(paths: String,{
           if (serverAlbumIndex > -1) {
             albumId = serverAlbums[serverAlbumIndex].id;
           } else {
-            albumId = await createAlbum(endpoint, key, createAlbums);
+            albumId = await createAlbum(instanceAddress, key, createAlbums);
           }
 
           await addAssetsToAlbum(
-            endpoint,
+            instanceAddress,
             key,
             albumId,
             Array.from(assetDirectoryMap.values()).flat()
@@ -353,14 +368,7 @@ async function upload(paths: String,{
         }
       }
 
-      log(
-        chalk.yellow(`Failed to upload ${errorAssets.length} files `),
-        errorAssets
-      );
-
-      if (errorAssets.length > 0) {
-        process.exit(1);
-      }
+      log(`Upload complete: ${successAssets.length} items succeeded. ${errorAssets.length} items failed`);
 
       process.exit(0);
     }
@@ -429,6 +437,7 @@ async function startUpload(
       data: data,
     };
 
+    successAssets.push(asset);
     const res = await axios(config);
     return res;
   } catch (e) {
@@ -532,7 +541,7 @@ async function validateConnection(endpoint: string, key: string) {
       return res.data;
     }
   } catch (e) {
-    log(chalk.red("Error logging in - check api key"));
+    log(chalk.red("Authentication failed: " + e));
     process.exit(1);
   }
 }
@@ -543,8 +552,3 @@ function getAssetType(filePath: string) {
   return mimeType.split("/")[0].toUpperCase();
 }
 
-async function isDirectory(path: string) {  
-  const stats = await fs.promises.lstat(path)
-
-  return stats.isDirectory()
-}
