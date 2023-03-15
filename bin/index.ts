@@ -50,13 +50,14 @@ const SUPPORTED_MIME_TYPES = [
 ];
 
 program
-  .name("Immich CLI")
+  .name("immich")
   .description("Immich command line interface based on nodejs")
   .version(pjson.version);
 
 program
   .command("upload")
   .description("Upload assets to an Immich instance")
+  .usage("upload [options] <paths...>")
   .addOption(
     new Option("-k, --key <value>", "API Key").env("IMMICH_API_KEY")
   )
@@ -104,11 +105,34 @@ program
       "Set a device UUID"
     ).env("IMMICH_DEVICE_UUID")
   )
-  .argument(
-    '<paths...>'
+  .addOption(
+    new Option("-d, --directory <value>", "Upload assets recurisvely from the specified directory (DEPRECATED, use path argument with --recursive instead)").env(
+      "IMMICH_TARGET_DIRECTORY"
+    )
   )
-  .action((str, options) => {
-    upload(str, options);
+  .argument(
+    '[paths...]', 'One or more paths to assets to be uploaded'
+  )
+  .action((paths, options) => {
+    if (options.directory) {
+      if (paths.length > 0) {
+        log(chalk.red("Error: Can't use deprecated --directory option when specifying paths"));
+        process.exit(1);
+      }
+      if (options.recursive) {
+        log(chalk.red("Error: Can't use deprecated --directory option together with --recursive"));
+        process.exit(1);
+      }
+      log(chalk.yellow("Warning: deprecated option --directory used, this will be removed in a future release. Please specify paths with --recursive instead"));
+      paths.push(options.directory);
+      options.recursive = true;
+    } else {
+      if (paths.length === 0) {
+        log(chalk.red("Error: Must specify at least one path"));
+        process.exit(1);
+      }
+    }
+    upload(paths, options);
   });
 
 program.parse(process.argv);
