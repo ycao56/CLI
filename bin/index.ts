@@ -22,7 +22,6 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 let errorAssets: any[] = [];
-let successAssets: any[] = [];
 
 const SUPPORTED_MIME = [
   // IMAGES
@@ -145,6 +144,7 @@ async function upload(paths: String,{
 }: any) {
   const endpoint = server;
   const deviceId = deviceUuid || (await si.uuid()).os || "CLI";
+  const osInfo = (await si.osInfo()).distro;
   const localAssets: any[] = [];
 
   // Ping server
@@ -191,6 +191,7 @@ async function upload(paths: String,{
     }
   }
 
+  // Ensure that list of files only has unique entries
   const uniqueFiles = new Set(files);
 
   for(const filePath of uniqueFiles) {
@@ -212,27 +213,27 @@ async function upload(paths: String,{
 
   log("Comparing local assets with those on the Immich instance...");
 
-  const assetsInInstance = await getAssetInfoFromServer(
+  const backupAsset = await getAssetInfoFromServer(
     endpoint,
     key,
     deviceId
   );
 
-  const newAssets = localAssets.filter(a => !assetsInInstance.includes(a.id));
+  const newAssets = localAssets.filter(a => !backupAsset.includes(a.id));
   if (localAssets.length == 0 || (newAssets.length == 0 && !createAlbums)) {
     log(chalk.green("All assets have been backed up to the server"));
     process.exit(0);
   } else {
     log(
       chalk.green(
-        `${newAssets.length} assets to upload`
+        `A total of ${newAssets.length} assets will be uploaded to the server`
       )
     );
   }
 
   if (createAlbums) {
     log(chalk.green(
-      `${localAssets.length} assets will be added to album(s).\n` +
+      `A total of ${localAssets.length} assets will be added to album(s).\n` +
       "NOTE: some assets may already be associated with the album, this will not create duplicates."
     ));
   }
@@ -248,8 +249,8 @@ async function upload(paths: String,{
       });
     const deleteLocalAsset = deleteAssets ? "y" : "n";
 
-    if (answer != "y") {
-      log(chalk.yellow("Upload aborted"));
+    if (answer == "n") {
+      log(chalk.yellow("Abort Upload Process"));
       process.exit(1);
     }
 
@@ -276,7 +277,7 @@ async function upload(paths: String,{
           assetDirectoryMap.set(album, []);
         }
 
-        if (!assetsInInstance.includes(asset.id)) {
+        if (!backupAsset.includes(asset.id)) {
           // New file, lets upload it!
           uploadQueue.push(
             limit(async () => {
@@ -297,7 +298,7 @@ async function upload(paths: String,{
                       }
                     });
                   }
-                  assetsInInstance.push(asset.id);
+                  backupAsset.push(asset.id);
                   assetDirectoryMap.get(album)!.push(res!.data.id);
                 }
               } catch (err) {
@@ -331,7 +332,7 @@ async function upload(paths: String,{
       }
 
       const uploads = await Promise.all(uploadQueue);
-      
+
       progressBar.stop();
 
       if (createAlbums) {
@@ -387,7 +388,14 @@ async function upload(paths: String,{
         }
       }
 
-      log(`Upload complete: ${successAssets.length} items succeeded. ${errorAssets.length} items failed`);
+      log(
+        chalk.yellow(`Failed to upload ${errorAssets.length} files `),
+        errorAssets
+      );
+
+      if (errorAssets.length > 0) {
+        process.exit(1);
+      }
 
       process.exit(0);
     }
@@ -543,7 +551,7 @@ async function pingServer(endpoint: string) {
     }
   } catch (e) {
     log(
-      chalk.red("Error connecting to server - check server address and port: " + e)
+      chalk.red("Error connecting to server - check server address and port")
     );
     process.exit(1);
   }
@@ -560,7 +568,7 @@ async function validateConnection(endpoint: string, key: string) {
       return res.data;
     }
   } catch (e) {
-    log(chalk.red("Authentication failed: " + e));
+    log(chalk.red("Error logging in - check api key"));
     process.exit(1);
   }
 }
@@ -570,4 +578,3 @@ function getAssetType(filePath: string) {
 
   return mimeType.split("/")[0].toUpperCase();
 }
-
