@@ -50,7 +50,11 @@ Specify user's credential, Immich's server address and port and the directory yo
 immich upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api file1.jpg file2.jpg
 ```
 
+By default, subfolders are not included. To upload a directory including subfolder, use the --recursive option:
 
+```
+immich upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api --recursive directory/
+```
 
 ---
 
