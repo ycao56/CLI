@@ -73,11 +73,6 @@ program
     ).default(false)
   )
   .addOption(
-    new Option("-v, --verbose", "Show verbose output").env(
-      "IMMICH_VERBOSE"
-    ).default(false)
-  )
-  .addOption(
     new Option("-y, --yes", "Assume yes on all interactive prompts").env(
       "IMMICH_ASSUME_YES"
     )
