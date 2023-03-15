@@ -82,14 +82,14 @@ Be aware that as this runs inside a container, you need to mount the folder from
 the container. The below command uses `$(pwd)` to mount the folder you are currently in.
 
 ```
-docker run -it --rm -v "$(pwd)":/import ghcr.io/immich-app/immich-cli:latest upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api
+docker run -it --rm -v "$(pwd)":/import ghcr.io/immich-app/immich-cli:latest upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api file.jpg
 ```
 
 Optionally, you can create an alias:
 
 ```
 alias immich="docker run -it --rm -v '$(pwd)':/import ghcr.io/immich-app/immich-cli:latest"
-immich upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api
+immich upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api file.jpg
 ```
 
 ### Install from source
