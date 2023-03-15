@@ -24,7 +24,7 @@ const rl = readline.createInterface({
 let errorAssets: any[] = [];
 let successAssets: any[] = [];
 
-const SUPPORTED_MIME_TYPES = [
+const SUPPORTED_MIME = [
   // IMAGES
   "image/heif",
   "image/heic",
@@ -143,17 +143,17 @@ async function upload(paths: String,{
   album: createAlbums,
   deviceUuid: deviceUuid
 }: any) {
-  const instanceAddress = server;
+  const endpoint = server;
   const deviceId = deviceUuid || (await si.uuid()).os || "CLI";
   const localAssets: any[] = [];
 
   // Ping server
   log("Checking connectivity with Immich instance...");
-  await pingServer(instanceAddress);
+  await pingServer(endpoint);
 
   // Login
   log("Checking credentials...");
-  const user = await validateConnection(instanceAddress, key);
+  const user = await validateConnection(endpoint, key);
   log(chalk.green(`Successful authentication for user ${user.email}`));
 
   // Index provided directory
@@ -195,7 +195,7 @@ async function upload(paths: String,{
 
   for(const filePath of uniqueFiles) {
     const mimeType = mime.lookup(filePath) as string;
-    if (SUPPORTED_MIME_TYPES.includes(mimeType)) {
+    if (SUPPORTED_MIME.includes(mimeType)) {
       const fileStat = fs.statSync(filePath);
       localAssets.push({
         id: `${path.basename(filePath)}-${fileStat.size}`.replace(/\s+/g, ""),
@@ -213,7 +213,7 @@ async function upload(paths: String,{
   log("Comparing local assets with those on the Immich instance...");
 
   const assetsInInstance = await getAssetInfoFromServer(
-    instanceAddress,
+    endpoint,
     key,
     deviceId
   );
@@ -282,7 +282,7 @@ async function upload(paths: String,{
             limit(async () => {
               try {
                 const res = await startUpload(
-                  instanceAddress,
+                  endpoint,
                   key,
                   asset,
                   deviceId,
@@ -312,7 +312,7 @@ async function upload(paths: String,{
               try {
                 // Fetch existing asset from server
                 const res = await axios.post(
-                  `${instanceAddress}/asset/check`,
+                  `${endpoint}/asset/check`,
                   {
                     deviceAssetId: asset.id,
                     deviceId,
@@ -337,7 +337,7 @@ async function upload(paths: String,{
       if (createAlbums) {
         log(chalk.green("Creating albums..."));
 
-        const serverAlbums = await getAlbumsFromServer(instanceAddress, key);
+        const serverAlbums = await getAlbumsFromServer(endpoint, key);
 
         if (typeof createAlbums === "boolean") {
           progressBar.start(assetDirectoryMap.size, 0);
@@ -350,12 +350,12 @@ async function upload(paths: String,{
             if (serverAlbumIndex > -1) {
               albumId = serverAlbums[serverAlbumIndex].id;
             } else {
-              albumId = await createAlbum(instanceAddress, key, localAlbum);
+              albumId = await createAlbum(endpoint, key, localAlbum);
             }
 
             if (albumId) {
               await addAssetsToAlbum(
-                instanceAddress,
+                endpoint,
                 key,
                 albumId,
                 assetDirectoryMap.get(localAlbum)!
@@ -375,11 +375,11 @@ async function upload(paths: String,{
           if (serverAlbumIndex > -1) {
             albumId = serverAlbums[serverAlbumIndex].id;
           } else {
-            albumId = await createAlbum(instanceAddress, key, createAlbums);
+            albumId = await createAlbum(endpoint, key, createAlbums);
           }
 
           await addAssetsToAlbum(
-            instanceAddress,
+            endpoint,
             key,
             albumId,
             Array.from(assetDirectoryMap.values()).flat()
