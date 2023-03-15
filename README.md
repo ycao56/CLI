@@ -47,22 +47,29 @@ npm i -g immich
 Specify user's credential, Immich's server address and port and the directory you would like to upload videos/photos from.
 
 ```
-immich upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api -d your/target/directory
+immich upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api file1.jpg file2.jpg
 ```
+
+
 
 ---
 
-### Parameters
+### Options
 
-| Parameter        | Description                                                         |
+| Option           | Description                                                         |
 | ---------------- | ------------------------------------------------------------------- |
 | --yes / -y       | Assume yes on all interactive prompts                               |
+| --recursive / -r | Include subfolders                                                  |
 | --delete / -da   | Delete local assets after upload                                    |
 | --key / -k       | User's API key                                                      |
 | --server / -s    | Immich's server address                                             |
-| --directory / -d | Directory to upload from                                            |
 | --threads / -t   | Number of threads to use (Default 5)                                |
 | --album/ -al     | Create albums for assets based on the parent folder or a given name |
+
+### Deprecated options
+
+
+| --directory / -d | Directory to upload from (including subfolders)                     |
 
 ### Run via Docker
 
@@ -85,7 +92,7 @@ immich upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api
 1 - Clone Repository
 
 ```
-git clone https://github.com/alextran1502/immich-cli
+git clone https://github.com/immich-app/CLI
 ```
 
 2 - Install dependencies
@@ -103,5 +110,5 @@ npm run build
 4 - Run
 
 ```
-node bin/index.js upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api -d your/target/directory
+node bin/index.js upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api --recursive your/asset/directory
 ```
