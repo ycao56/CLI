@@ -464,7 +464,6 @@ async function startUpload(
       data: data,
     };
 
-    successAssets.push(asset);
     const res = await axios(config);
     return res;
   } catch (e) {
