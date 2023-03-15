@@ -68,7 +68,8 @@ immich upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api file1.j
 
 ### Deprecated options
 
-
+| Option           | Description                                                         |
+| ---------------- | ------------------------------------------------------------------- |
 | --directory / -d | Directory to upload from (including subfolders)                     |
 
 ### Run via Docker
