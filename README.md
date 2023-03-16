@@ -70,12 +70,6 @@ immich upload --key HFEJ38DNSDUEG --server http://192.168.1.216:2283/api --recur
 | --threads / -t   | Number of threads to use (Default 5)                                |
 | --album/ -al     | Create albums for assets based on the parent folder or a given name |
 
-### Deprecated options
-
-| Option           | Description                                                         |
-| ---------------- | ------------------------------------------------------------------- |
-| --directory / -d | Directory to upload from (including subfolders)                     |
-
 ### Run via Docker
 
 Be aware that as this runs inside a container, you need to mount the folder from which you want to import into 

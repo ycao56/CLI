@@ -50,7 +50,7 @@ const SUPPORTED_MIME = [
 
 program
   .name("immich")
-  .description("Immich command line interface based on nodejs")
+  .description("Immich command line interface")
   .version(pjson.version);
 
 program
@@ -135,7 +135,6 @@ async function upload(paths: String,{
   key,
   server,
   recursive,
-  verbose,
   yes: assumeYes,
   delete: deleteAssets,
   uploadThreads,
@@ -183,8 +182,7 @@ async function upload(paths: String,{
     if (stats.isDirectory()) 
     {
       // Path is a directory so use the crawler to crawl it
-      const api = crawler.crawl(newPath);
-      files=files.concat((await api.withPromise()));
+      files.push((await crawler.crawl(newPath).withPromise()));
     } else {
       // Path is a single file
       files.push(path.resolve(newPath));
