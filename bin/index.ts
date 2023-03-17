@@ -122,8 +122,13 @@ program
       options.recursive = true;
     } else {
       if (paths.length === 0) {
-        log(chalk.red("Error: Must specify at least one path"));
-        process.exit(1);
+        const env_path=process.env.IMMICH_ASSET_PATH;
+        if(env_path === undefined) {
+          log(chalk.red("Error: Must specify at least one path"));
+          process.exit(1);
+        } else {
+          paths=[env_path];
+        }
       }
     }
     upload(paths, options);

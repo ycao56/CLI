@@ -1,6 +1,6 @@
 FROM node:16-alpine3.14 as core
 
-ENV IMMICH_TARGET_DIRECTORY=/import
+ENV IMMICH_ASSET_PATH=/import
 
 WORKDIR /usr/src/app
 
