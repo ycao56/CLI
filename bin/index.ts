@@ -7,7 +7,6 @@ import * as si from "systeminformation";
 import * as readline from "readline";
 import * as path from "path";
 import FormData from "form-data";
-import { ExifDateTime, exiftool, Tags } from "exiftool-vendored";
 import * as cliProgress from "cli-progress";
 import { stat } from "fs/promises";
 // GLOBAL
@@ -361,28 +360,12 @@ async function startUpload(
     const assetType = getAssetType(asset.filePath);
     const fileStat = await stat(asset.filePath);
 
-    const exifData = await exiftool.read(asset.filePath).catch((e) => {
-      log(chalk.red(`The exifData parsing failed due to: ${e} on file ${asset.filePath}`));
-      return null;
-    });
-
-    const exifToDate = (exifDate: string | ExifDateTime | undefined) => {
-      if (!exifDate) return null;
-
-      if (typeof exifDate === 'string') {
-        return new Date(exifDate).toISOString();
-      }
-
-      return exifDate.toDate().toISOString();
-    };
-
-    const fileCreatedAt = exifToDate(exifData?.DateTimeOriginal ?? exifData?.CreateDate ?? asset.fileCreatedAt);
-
     const data = new FormData();
     data.append("deviceAssetId", asset.id);
     data.append("deviceId", deviceId);
     data.append("assetType", assetType);
-    data.append("fileCreatedAt", fileCreatedAt);
+    // This field is now deprecatd and we'll remove it from the API. Therefore, just set it to mtime for now
+    data.append("fileCreatedAt", fileStat.mtime.toISOString());
     data.append("fileModifiedAt", fileStat.mtime.toISOString());
     data.append("isFavorite", JSON.stringify(false));
     data.append("fileExtension", path.extname(asset.filePath));

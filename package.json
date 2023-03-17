@@ -27,7 +27,6 @@
     "chalk": "^2.4.1",
     "cli-progress": "^3.10.0",
     "commander": "^9.0.0",
-    "exiftool-vendored": "^21.2.0",
     "fdir": "^5.2.0",
     "form-data": "^4.0.0",
     "mime-types": "^2.1.34",
