@@ -2,7 +2,7 @@
 import axios, { AxiosRequestConfig } from "axios";
 import { program, Option } from "commander";
 import * as fs from "fs";
-import { fdir } from "fdir";
+import { fdir, PathsOutput } from "fdir";
 import * as si from "systeminformation";
 import * as readline from "readline";
 import * as path from "path";
@@ -166,7 +166,7 @@ async function upload(paths: String,{
     crawler = crawler.withMaxDepth(0);
   }
 
-  let files: any[] = [];
+  const files: any[] = [];
 
   for (const newPath of paths) {    
     try {
@@ -182,7 +182,7 @@ async function upload(paths: String,{
     if (stats.isDirectory()) 
     {
       // Path is a directory so use the crawler to crawl it
-      files.push((await crawler.crawl(newPath).withPromise()));
+      files.push(...(await crawler.crawl(newPath).withPromise() as PathsOutput));
     } else {
       // Path is a single file
       files.push(path.resolve(newPath));
