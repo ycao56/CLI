@@ -122,12 +122,13 @@ program
       options.recursive = true;
     } else {
       if (paths.length === 0) {
-        const env_path=process.env.IMMICH_ASSET_PATH;
-        if(env_path === undefined) {
+        // If no path argument is given, check if an env variable is set
+        const envPath=process.env.IMMICH_ASSET_PATH;
+        if(!envPath) {
           log(chalk.red("Error: Must specify at least one path"));
           process.exit(1);
         } else {
-          paths=[env_path];
+          paths=[envPath];
         }
       }
     }
@@ -136,7 +137,7 @@ program
 
 program.parse(process.argv);
 
-async function upload(paths: String,{
+async function upload(paths: string[],{
   key,
   server,
   recursive,
