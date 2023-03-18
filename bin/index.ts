@@ -2,7 +2,7 @@
 import axios, { AxiosRequestConfig } from "axios";
 import { program, Option } from "commander";
 import * as fs from "fs";
-import { fdir } from "fdir";
+import { fdir, PathsOutput } from "fdir";
 import * as si from "systeminformation";
 import * as readline from "readline";
 import * as path from "path";
@@ -48,26 +48,27 @@ const SUPPORTED_MIME = [
 ];
 
 program
-  .name("Immich CLI Utilities")
-  .description("Immich CLI Utilities toolset")
+  .name("immich")
+  .description("Immich command line interface")
   .version(pjson.version);
 
 program
   .command("upload")
-  .description("Upload images and videos in a directory to Immich's server")
+  .description("Upload assets to an Immich instance")
+  .usage("upload [options] <paths...>")
   .addOption(
     new Option("-k, --key <value>", "API Key").env("IMMICH_API_KEY")
   )
   .addOption(
     new Option(
       "-s, --server <value>",
-      "Server address (http://<your-ip>:2283/api or https://<your-domain>/api)"
+      "Immich server address (http://<your-ip>:2283/api or https://<your-domain>/api)"
     ).env("IMMICH_SERVER_ADDRESS")
   )
   .addOption(
-    new Option("-d, --directory <value>", "Target Directory").env(
-      "IMMICH_TARGET_DIRECTORY"
-    )
+    new Option("-r, --recursive", "Recursive").env(
+      "IMMICH_RECURSIVE"
+    ).default(false)
   )
   .addOption(
     new Option("-y, --yes", "Assume yes on all interactive prompts").env(
@@ -97,14 +98,48 @@ program
       "Set a device UUID"
     ).env("IMMICH_DEVICE_UUID")
   )
-  .action(upload);
+  .addOption(
+    new Option("-d, --directory <value>", "Upload assets recurisvely from the specified directory (DEPRECATED, use path argument with --recursive instead)").env(
+      "IMMICH_TARGET_DIRECTORY"
+    )
+  )
+  .argument(
+    '[paths...]', 'One or more paths to assets to be uploaded'
+  )
+  .action((paths, options) => {
+    if (options.directory) {
+      if (paths.length > 0) {
+        log(chalk.red("Error: Can't use deprecated --directory option when specifying paths"));
+        process.exit(1);
+      }
+      if (options.recursive) {
+        log(chalk.red("Error: Can't use deprecated --directory option together with --recursive"));
+        process.exit(1);
+      }
+      log(chalk.yellow("Warning: deprecated option --directory used, this will be removed in a future release. Please specify paths with --recursive instead"));
+      paths.push(options.directory);
+      options.recursive = true;
+    } else {
+      if (paths.length === 0) {
+        // If no path argument is given, check if an env variable is set
+        const envPath=process.env.IMMICH_ASSET_PATH;
+        if(!envPath) {
+          log(chalk.red("Error: Must specify at least one path"));
+          process.exit(1);
+        } else {
+          paths=[envPath];
+        }
+      }
+    }
+    upload(paths, options);
+  });
 
 program.parse(process.argv);
 
-async function upload({
+async function upload(paths: string[],{
   key,
   server,
-  directory,
+  recursive,
   yes: assumeYes,
   delete: deleteAssets,
   uploadThreads,
@@ -117,30 +152,52 @@ async function upload({
   const localAssets: any[] = [];
 
   // Ping server
-  log("[1] Pinging server...");
+  log("Checking connectivity with Immich instance...");
   await pingServer(endpoint);
 
   // Login
-  log("[2] Logging in...");
+  log("Checking credentials...");
   const user = await validateConnection(endpoint, key);
-  log(chalk.yellow(`Connected to Immich with user ${user.email}`));
-
-  // Check if directory exist
-  log("[3] Checking directory...");
-  if (fs.existsSync(directory)) {
-    log(chalk.green("Directory status: OK"));
-  } else {
-    log(chalk.red("Error navigating to directory - check directory path"));
-    process.exit(1);
-  }
+  log(chalk.green(`Successful authentication for user ${user.email}`));
 
   // Index provided directory
-  log("[4] Indexing files...");
-  const api = new fdir().withFullPaths().crawl(directory);
+  log("Indexing local assets...");
 
-  const files = (await api.withPromise()) as any[];
+  let crawler = new fdir().withFullPaths();
 
-  for (const filePath of files) {
+  if (!recursive)
+  {
+    // Don't go into subfolders
+    crawler = crawler.withMaxDepth(0);
+  }
+
+  const files: any[] = [];
+
+  for (const newPath of paths) {    
+    try {
+      // Check if the path can be accessed
+      await fs.promises.access(newPath);
+    } catch (e) {
+      log(chalk.red(e));
+      process.exit(1);
+    }
+ 
+    const stats = await fs.promises.lstat(newPath);
+
+    if (stats.isDirectory()) 
+    {
+      // Path is a directory so use the crawler to crawl it
+      files.push(...(await crawler.crawl(newPath).withPromise() as PathsOutput));
+    } else {
+      // Path is a single file
+      files.push(path.resolve(newPath));
+    }
+  }
+
+  // Ensure that list of files only has unique entries
+  const uniqueFiles = new Set(files);
+
+  for(const filePath of uniqueFiles) {
     const mimeType = mime.lookup(filePath) as string;
     if (SUPPORTED_MIME.includes(mimeType)) {
       const fileStat = fs.statSync(filePath);
@@ -150,13 +207,14 @@ async function upload({
       });
     }
   }
-  log(chalk.green("Indexing file: OK"));
-  log(
-    chalk.yellow(`Found ${localAssets.length} assets in specified directory`)
-  );
+  if (localAssets.length == 0) {
+    log("No local assets found, exiting");
+    process.exit(0);
+  }
 
-  // Find assets that has not been backup
-  log("[5] Gathering device's asset info from server...");
+  log(`Indexing complete, found ${localAssets.length} local assets`);
+
+  log("Comparing local assets with those on the Immich instance...");
 
   const backupAsset = await getAssetInfoFromServer(
     endpoint,
@@ -499,6 +557,3 @@ function getAssetType(filePath: string) {
 
   return mimeType.split("/")[0].toUpperCase();
 }
-
-// node bin/index.js upload --email testuser@email.com --password password --server http://10.1.15.216:2283/api -d /Users/alex/Documents/immich-cli-upload-test-location
-// node bin/index.js upload --help
