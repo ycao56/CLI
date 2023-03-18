@@ -9,7 +9,6 @@ import * as path from "path";
 import FormData from "form-data";
 import * as cliProgress from "cli-progress";
 import { stat } from "fs/promises";
-import * as exifr from "exifr";
 // GLOBAL
 import * as mime from "mime-types";
 import chalk from "chalk";
@@ -419,35 +418,12 @@ async function startUpload(
     const assetType = getAssetType(asset.filePath);
     const fileStat = await stat(asset.filePath);
 
-    let exifData = null;
-    if (assetType != "VIDEO") {
-      try {
-        exifData = await exifr.parse(asset.filePath, {
-          tiff: true,
-          ifd0: true as any,
-          ifd1: true,
-          exif: true,
-          gps: true,
-          interop: true,
-          xmp: true,
-          icc: true,
-          iptc: true,
-          jfif: true,
-          ihdr: true,
-        });
-      } catch (e) { }
-    }
-
-    const createdAt =
-      exifData && exifData.DateTimeOriginal != null
-        ? new Date(exifData.DateTimeOriginal).toISOString()
-        : fileStat.mtime.toISOString();
-
     const data = new FormData();
     data.append("deviceAssetId", asset.id);
     data.append("deviceId", deviceId);
     data.append("assetType", assetType);
-    data.append("fileCreatedAt", createdAt);
+    // This field is now deprecatd and we'll remove it from the API. Therefore, just set it to mtime for now
+    data.append("fileCreatedAt", fileStat.mtime.toISOString());
     data.append("fileModifiedAt", fileStat.mtime.toISOString());
     data.append("isFavorite", JSON.stringify(false));
     data.append("fileExtension", path.extname(asset.filePath));
