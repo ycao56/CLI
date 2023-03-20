@@ -56,9 +56,7 @@ program
   .command("upload")
   .description("Upload assets to an Immich instance")
   .usage("upload [options] <paths...>")
-  .addOption(
-    new Option("-k, --key <value>", "API Key").env("IMMICH_API_KEY")
-  )
+  .addOption(new Option("-k, --key <value>", "API Key").env("IMMICH_API_KEY"))
   .addOption(
     new Option(
       "-s, --server <value>",
@@ -66,9 +64,9 @@ program
     ).env("IMMICH_SERVER_ADDRESS")
   )
   .addOption(
-    new Option("-r, --recursive", "Recursive").env(
-      "IMMICH_RECURSIVE"
-    ).default(false)
+    new Option("-r, --recursive", "Recursive")
+      .env("IMMICH_RECURSIVE")
+      .default(false)
   )
   .addOption(
     new Option("-y, --yes", "Assume yes on all interactive prompts").env(
@@ -93,41 +91,51 @@ program
     ).env("IMMICH_CREATE_ALBUMS")
   )
   .addOption(
-    new Option(
-      "-id, --device-uuid <value>",
-      "Set a device UUID"
-    ).env("IMMICH_DEVICE_UUID")
-  )
-  .addOption(
-    new Option("-d, --directory <value>", "Upload assets recurisvely from the specified directory (DEPRECATED, use path argument with --recursive instead)").env(
-      "IMMICH_TARGET_DIRECTORY"
+    new Option("-id, --device-uuid <value>", "Set a device UUID").env(
+      "IMMICH_DEVICE_UUID"
     )
   )
-  .argument(
-    '[paths...]', 'One or more paths to assets to be uploaded'
+  .addOption(
+    new Option(
+      "-d, --directory <value>",
+      "Upload assets recurisvely from the specified directory (DEPRECATED, use path argument with --recursive instead)"
+    ).env("IMMICH_TARGET_DIRECTORY")
   )
+  .argument("[paths...]", "One or more paths to assets to be uploaded")
   .action((paths, options) => {
     if (options.directory) {
       if (paths.length > 0) {
-        log(chalk.red("Error: Can't use deprecated --directory option when specifying paths"));
+        log(
+          chalk.red(
+            "Error: Can't use deprecated --directory option when specifying paths"
+          )
+        );
         process.exit(1);
       }
       if (options.recursive) {
-        log(chalk.red("Error: Can't use deprecated --directory option together with --recursive"));
+        log(
+          chalk.red(
+            "Error: Can't use deprecated --directory option together with --recursive"
+          )
+        );
         process.exit(1);
       }
-      log(chalk.yellow("Warning: deprecated option --directory used, this will be removed in a future release. Please specify paths with --recursive instead"));
+      log(
+        chalk.yellow(
+          "Warning: deprecated option --directory used, this will be removed in a future release. Please specify paths with --recursive instead"
+        )
+      );
       paths.push(options.directory);
       options.recursive = true;
     } else {
       if (paths.length === 0) {
         // If no path argument is given, check if an env variable is set
-        const envPath=process.env.IMMICH_ASSET_PATH;
-        if(!envPath) {
+        const envPath = process.env.IMMICH_ASSET_PATH;
+        if (!envPath) {
           log(chalk.red("Error: Must specify at least one path"));
           process.exit(1);
         } else {
-          paths=[envPath];
+          paths = [envPath];
         }
       }
     }
@@ -136,16 +144,19 @@ program
 
 program.parse(process.argv);
 
-async function upload(paths: string[],{
-  key,
-  server,
-  recursive,
-  yes: assumeYes,
-  delete: deleteAssets,
-  uploadThreads,
-  album: createAlbums,
-  deviceUuid: deviceUuid
-}: any) {
+async function upload(
+  paths: string[],
+  {
+    key,
+    server,
+    recursive,
+    yes: assumeYes,
+    delete: deleteAssets,
+    uploadThreads,
+    album: createAlbums,
+    deviceUuid: deviceUuid,
+  }: any
+) {
   const endpoint = server;
   const deviceId = deviceUuid || (await si.uuid()).os || "CLI";
   const osInfo = (await si.osInfo()).distro;
@@ -165,15 +176,14 @@ async function upload(paths: string[],{
 
   let crawler = new fdir().withFullPaths();
 
-  if (!recursive)
-  {
+  if (!recursive) {
     // Don't go into subfolders
     crawler = crawler.withMaxDepth(0);
   }
 
   const files: any[] = [];
 
-  for (const newPath of paths) {    
+  for (const newPath of paths) {
     try {
       // Check if the path can be accessed
       await fs.promises.access(newPath);
@@ -181,13 +191,14 @@ async function upload(paths: string[],{
       log(chalk.red(e));
       process.exit(1);
     }
- 
+
     const stats = await fs.promises.lstat(newPath);
 
-    if (stats.isDirectory()) 
-    {
+    if (stats.isDirectory()) {
       // Path is a directory so use the crawler to crawl it
-      files.push(...(await crawler.crawl(newPath).withPromise() as PathsOutput));
+      files.push(
+        ...((await crawler.crawl(newPath).withPromise()) as PathsOutput)
+      );
     } else {
       // Path is a single file
       files.push(path.resolve(newPath));
@@ -197,7 +208,7 @@ async function upload(paths: string[],{
   // Ensure that list of files only has unique entries
   const uniqueFiles = new Set(files);
 
-  for(const filePath of uniqueFiles) {
+  for (const filePath of uniqueFiles) {
     const mimeType = mime.lookup(filePath) as string;
     if (SUPPORTED_MIME.includes(mimeType)) {
       const fileStat = fs.statSync(filePath);
@@ -216,13 +227,9 @@ async function upload(paths: string[],{
 
   log("Comparing local assets with those on the Immich instance...");
 
-  const backupAsset = await getAssetInfoFromServer(
-    endpoint,
-    key,
-    deviceId
-  );
+  const backupAsset = await getAssetInfoFromServer(endpoint, key, deviceId);
 
-  const newAssets = localAssets.filter(a => !backupAsset.includes(a.id));
+  const newAssets = localAssets.filter((a) => !backupAsset.includes(a.id));
   if (localAssets.length == 0 || (newAssets.length == 0 && !createAlbums)) {
     log(chalk.green("All assets have been backed up to the server"));
     process.exit(0);
@@ -235,10 +242,12 @@ async function upload(paths: string[],{
   }
 
   if (createAlbums) {
-    log(chalk.green(
-      `A total of ${localAssets.length} assets will be added to album(s).\n` +
-      "NOTE: some assets may already be associated with the album, this will not create duplicates."
-    ));
+    log(
+      chalk.green(
+        `A total of ${localAssets.length} assets will be added to album(s).\n` +
+          "NOTE: some assets may already be associated with the album, this will not create duplicates."
+      )
+    );
   }
 
   // Ask user
@@ -248,8 +257,8 @@ async function upload(paths: string[],{
     const answer = assumeYes
       ? "y"
       : await new Promise((resolve) => {
-        rl.question("Do you want to start upload now? (y/n) ", resolve);
-      });
+          rl.question("Do you want to start upload now? (y/n) ", resolve);
+        });
     const deleteLocalAsset = deleteAssets ? "y" : "n";
 
     if (answer == "n") {
@@ -285,12 +294,7 @@ async function upload(paths: string[],{
           uploadQueue.push(
             limit(async () => {
               try {
-                const res = await startUpload(
-                  endpoint,
-                  key,
-                  asset,
-                  deviceId,
-                );
+                const res = await startUpload(endpoint, key, asset, deviceId);
                 progressBar.increment(1, { filepath: asset.filePath });
                 if (res && (res.status == 201 || res.status == 200)) {
                   if (deleteLocalAsset == "y") {
@@ -468,11 +472,7 @@ async function getAlbumsFromServer(endpoint: string, key: string) {
   }
 }
 
-async function createAlbum(
-  endpoint: string,
-  key: string,
-  albumName: string
-) {
+async function createAlbum(endpoint: string, key: string, albumName: string) {
   try {
     const res = await axios.post(
       `${endpoint}/album`,
@@ -540,7 +540,7 @@ async function validateConnection(endpoint: string, key: string) {
   try {
     const res = await axios.get(`${endpoint}/user/me`, {
       headers: { "x-api-key": key },
-    })
+    });
 
     if (res.status == 200) {
       log(chalk.green("Login status: OK"));
