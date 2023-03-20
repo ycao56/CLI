@@ -192,14 +192,13 @@ async function upload(
       process.exit(1);
     }
 
-    const stats = fs.lstatSync(newPath);
+    const stats = await fs.promises.lstat(newPath);
 
     if (stats.isDirectory()) {
-      // Path is a directory so use the crawler to crawl it (potentially very large list)
-      const children = crawler.crawl(newPath).sync() as PathsOutput;
-      for (const child of children) {
-        files.push(child);
-      }
+      // Path is a directory so use the crawler to crawl it
+      files.push(
+        ...((await crawler.crawl(newPath).withPromise()) as PathsOutput)
+      );
     } else {
       // Path is a single file
       files.push(path.resolve(newPath));
