@@ -6,7 +6,9 @@
   "scripts": {
     "build": "tsc",
     "start": "node bin/index.js",
-    "test": "node bin/index.js upload -d ./test"
+    "test": "node bin/index.js upload -d ./test",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write ."
   },
   "repository": {
     "type": "git",
@@ -46,6 +48,7 @@
     "@types/cli-progress": "^3.11.0",
     "@types/mime-types": "^2.1.1",
     "@types/node": "^18.15.2",
+    "prettier": "^2.8.6",
     "typescript": "^4.7.4"
   }
 }
