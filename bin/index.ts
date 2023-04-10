@@ -64,7 +64,7 @@ program
   .addOption(new Option('-y, --yes', 'Assume yes on all interactive prompts').env('IMMICH_ASSUME_YES'))
   .addOption(new Option('-da, --delete', 'Delete local assets after upload').env('IMMICH_DELETE_ASSETS'))
   .addOption(
-    new Option('-t, --threads', 'Amount of concurrent upload threads (default=5)').env('IMMICH_UPLOAD_THREADS'),
+    new Option('-t, --threads <num>', 'Amount of concurrent upload threads (default=5)').env('IMMICH_UPLOAD_THREADS'),
   )
   .addOption(
     new Option('-al, --album [album]', 'Create albums for assets based on the parent folder or a given name').env(
