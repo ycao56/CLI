@@ -75,26 +75,18 @@ program
   .addOption(
     new Option(
       '-d, --directory <value>',
-      'Upload assets recurisvely from the specified directory (DEPRECATED, use path argument with --recursive instead)',
+      'Upload assets recursively from the specified directory (DEPRECATED, use path argument with --recursive instead)',
     ).env('IMMICH_TARGET_DIRECTORY'),
   )
   .argument('[paths...]', 'One or more paths to assets to be uploaded')
   .action((paths, options) => {
     if (options.directory) {
       if (paths.length > 0) {
-        log(
-          chalk.red(
-            "Error: Can't use deprecated --directory option when specifying paths"
-          )
-        );
+        log(chalk.red("Error: Can't use deprecated --directory option when specifying paths"));
         process.exit(1);
       }
       if (options.recursive) {
-        log(
-          chalk.red(
-            "Error: Can't use deprecated --directory option together with --recursive"
-          )
-        );
+        log(chalk.red("Error: Can't use deprecated --directory option together with --recursive"));
         process.exit(1);
       }
       log(
@@ -189,11 +181,20 @@ async function upload(
   for (const filePath of uniqueFiles) {
     const mimeType = mime.lookup(filePath) as string;
     if (SUPPORTED_MIME.includes(mimeType)) {
-      const fileStat = fs.statSync(filePath);
-      localAssets.push({
-        id: `${path.basename(filePath)}-${fileStat.size}`.replace(/\s+/g, ''),
-        filePath,
-      });
+      try {
+        const fileStat = fs.statSync(filePath);
+        localAssets.push({
+          id: `${path.basename(filePath)}-${fileStat.size}`.replace(/\s+/g, ''),
+          filePath,
+        });
+      } catch (e) {
+        errorAssets.push({
+          file: filePath,
+          reason: e,
+          response: e.response?.data,
+        });
+        continue;
+      }
     }
   }
   if (localAssets.length == 0) {
