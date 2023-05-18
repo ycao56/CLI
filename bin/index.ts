@@ -387,7 +387,7 @@ async function startUpload(endpoint: string, key: string, asset: any, deviceId: 
 
     data.append('assetData', fs.createReadStream(asset.filePath));
     if (fs.existsSync(`${asset.filePath}.xmp`)) {
-      data.append('sidecarData', fs.createReadStream(`${asset.filePath}.xmp`))
+      data.append('sidecarData', fs.createReadStream(`${asset.filePath}.xmp`), {contentType: 'application/xml'})
     }
 
     const config: AxiosRequestConfig<any> = {
