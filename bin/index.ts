@@ -180,6 +180,7 @@ async function upload(
 
   for (const filePath of uniqueFiles) {
     const mimeType = mime.lookup(filePath) as string;
+    console.log(`mimetype: ${mimeType}`);
     if (SUPPORTED_MIME.includes(mimeType)) {
       try {
         const fileStat = fs.statSync(filePath);
@@ -386,9 +387,11 @@ async function startUpload(endpoint: string, key: string, asset: any, deviceId: 
     data.append('duration', '0:00:00.000000');
 
     data.append('assetData', fs.createReadStream(asset.filePath));
-    if (fs.existsSync(`${asset.filePath}.xmp`)) {
-      data.append('sidecarData', fs.createReadStream(`${asset.filePath}.xmp`), {contentType: 'application/xml'})
-    }
+
+    try {
+      await fs.promises.access(`${asset.filePath}.xmp`, fs.constants.W_OK);
+      data.append('sidecarData', fs.createReadStream(`${asset.filePath}.xmp`), { contentType: 'application/xml' });
+    } catch (e) {}
 
     const config: AxiosRequestConfig<any> = {
       method: 'post',
