@@ -387,6 +387,11 @@ async function startUpload(endpoint: string, key: string, asset: any, deviceId: 
 
     data.append('assetData', fs.createReadStream(asset.filePath));
 
+    try {
+      await fs.promises.access(`${asset.filePath}.xmp`, fs.constants.W_OK);
+      data.append('sidecarData', fs.createReadStream(`${asset.filePath}.xmp`), { contentType: 'application/xml' });
+    } catch (e) {}
+
     const config: AxiosRequestConfig<any> = {
       method: 'post',
       maxRedirects: 0,
