@@ -180,7 +180,6 @@ async function upload(
 
   for (const filePath of uniqueFiles) {
     const mimeType = mime.lookup(filePath) as string;
-    console.log(`mimetype: ${mimeType}`);
     if (SUPPORTED_MIME.includes(mimeType)) {
       try {
         const fileStat = fs.statSync(filePath);
