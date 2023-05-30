@@ -255,7 +255,7 @@ async function upload(
 
       const uploadQueue = [];
 
-      const limit = pLimit(uploadThreads ?? 5);
+      const limit = pLimit(uploadThreads ?? 1);
 
       for (const asset of localAssets) {
         const album = asset.filePath.split(path.sep).slice(-2)[0];
